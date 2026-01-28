@@ -255,6 +255,7 @@ export default function Home() {
               image={capturedImage!}
               onSubmit={handleConstraintsSubmit}
               onBack={() => setCurrentStep("upload")}
+              mode="standard"
             />
           </div>
         )}
@@ -265,6 +266,7 @@ export default function Home() {
               image={capturedImage!}
               onSubmit={handleProModeAnalysis}
               onBack={() => setCurrentStep("upload")}
+              mode="pro"
             />
           </div>
         )}

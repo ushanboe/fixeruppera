@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
 PHOTO 1 - BEFORE: The current state of the user's furniture item
 PHOTO 2 - TARGET: The inspiration/target look the user wants to achieve
 
+The target photo shows the desired style. Analyze it to determine the style goal automatically.
+
 USER CONSTRAINTS:
-- Style goal: ${constraints.styleGoal}
 - Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
 - Tools available: ${constraints.tools} (basic = hand tools only, power = power tools available)
-- Timeline: ${constraints.timeline}
+- Timeline: ${constraints.timeBand}
 - Experience: ${constraints.experience || "beginner"}
 
 ANALYZE AND PROVIDE:
