@@ -5,6 +5,7 @@ import { Camera, Upload, Sparkles, Zap, Target } from "lucide-react";
 import PhotoCapture from "@/components/PhotoCapture";
 import DualPhotoCapture from "@/components/DualPhotoCapture";
 import IdentificationResults from "@/components/IdentificationResults";
+import ProIdentificationResults from "@/components/ProIdentificationResults";
 import ConstraintsForm from "@/components/ConstraintsForm";
 import AnalysisResults from "@/components/AnalysisResults";
 import IdeasList from "@/components/IdeasList";
@@ -12,7 +13,7 @@ import PlanView from "@/components/PlanView";
 import ComparisonResults from "@/components/ComparisonResults";
 
 type AppMode = "standard" | "pro";
-type AppStep = "mode" | "upload" | "identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison";
+type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison";
 
 export default function Home() {
   const [appMode, setAppMode] = useState<AppMode | null>(null);
@@ -78,6 +79,32 @@ export default function Home() {
   const handleDualPhotoCapture = async (beforeImage: string, targetImage: string) => {
     setCapturedImage(beforeImage);
     setTargetImage(targetImage);
+    setCurrentStep("pro-identification");
+
+    // Call identification APIs for both images
+    const [beforeResponse, targetResponse] = await Promise.all([
+      fetch("/api/upcycle/identify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: { dataUrl: beforeImage } }),
+      }),
+      fetch("/api/upcycle/identify-style", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: { dataUrl: targetImage } }),
+      }),
+    ]);
+
+    const beforeData = await beforeResponse.json();
+    const targetData = await targetResponse.json();
+
+    setIdentificationData({
+      before: beforeData,
+      target: targetData,
+    });
+  };
+
+  const handleProIdentificationConfirm = () => {
     setCurrentStep("constraints");
   };
 
@@ -150,7 +177,7 @@ export default function Home() {
       )}
 
       {/* Progress Indicator - Pro Mode */}
-      {appMode === "pro" && currentStep !== "mode" && currentStep !== "upload" && (
+      {appMode === "pro" && currentStep !== "mode" && currentStep !== "upload" && currentStep !== "pro-identification" && (
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-2">
             <div className={`h-1 flex-1 rounded-full ${["constraints", "analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-800"}`} />
@@ -244,6 +271,18 @@ export default function Home() {
               image={capturedImage!}
               data={identificationData}
               onConfirm={handleIdentificationConfirm}
+              onRetake={() => setCurrentStep("upload")}
+            />
+          </div>
+        )}
+
+        {currentStep === "pro-identification" && (
+          <div className="animate-slide-up">
+            <ProIdentificationResults
+              beforeImage={capturedImage!}
+              targetImage={targetImage!}
+              data={identificationData}
+              onConfirm={handleProIdentificationConfirm}
               onRetake={() => setCurrentStep("upload")}
             />
           </div>
