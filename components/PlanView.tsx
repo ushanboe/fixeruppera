@@ -25,7 +25,16 @@ export default function PlanView({ idea, analysis, constraints, onBack }: PlanVi
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    fetchPlan();
+    // Check if this is Pro Mode (analysis contains a plan from match-target)
+    if (analysis?.plan) {
+      console.log("=== PRO MODE: Using existing plan from match-target ===");
+      setPlan(analysis.plan);
+      setLoading(false);
+    } else {
+      // Standard Mode: Fetch plan from plan API
+      console.log("=== STANDARD MODE: Fetching plan from API ===");
+      fetchPlan();
+    }
   }, []);
 
   const fetchPlan = async () => {
