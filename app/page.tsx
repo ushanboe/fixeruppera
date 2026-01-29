@@ -145,20 +145,20 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen min-h-dvh bg-black">
+    <main className="min-h-screen min-h-dvh bg-gray-50">
       {/* Header */}
-      <header className="safe-header bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+      <header className="safe-header bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-md">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-white">FixerUppera</h1>
+            <h1 className="text-xl font-bold text-gray-900">FixerUppera</h1>
           </div>
           {currentStep !== "mode" && (
             <button
               onClick={handleReset}
-              className="text-sm font-medium text-purple-400 hover:text-purple-300"
+              className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
             >
               Start Over
             </button>
@@ -168,35 +168,35 @@ export default function Home() {
 
       {/* Progress Indicator - Standard Mode Only */}
       {appMode === "standard" && currentStep !== "upload" && currentStep !== "identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className={`h-1 flex-1 rounded-full ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${["ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${currentStep === "plan" ? "bg-purple-500" : "bg-gray-800"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-purple-500" : "bg-gray-200"}`} />
           </div>
         </div>
       )}
 
       {/* Progress Indicator - Pro Mode */}
       {appMode === "pro" && currentStep !== "mode" && currentStep !== "upload" && currentStep !== "pro-identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className={`h-1 flex-1 rounded-full ${["constraints", "analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${["analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${currentStep === "pro-comparison" ? "bg-green-500" : "bg-gray-800"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "pro-comparison" ? "bg-green-500" : "bg-gray-200"}`} />
           </div>
         </div>
       )}
 
       {/* Progress Indicator - Creative Reuse Mode */}
       {appMode === "creative-reuse" && currentStep !== "upload" && currentStep !== "identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className={`h-1 flex-1 rounded-full ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${["ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
-            <div className={`h-1 flex-1 rounded-full ${currentStep === "plan" ? "bg-orange-500" : "bg-gray-800"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-orange-500" : "bg-gray-200"}`} />
           </div>
         </div>
       )}
@@ -204,79 +204,79 @@ export default function Home() {
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-8 safe-bottom pb-12">
         {currentStep === "mode" && (
-          <div className="animate-fade-in space-y-10">
-            <div className="text-center space-y-3">
-              <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
-                Transform Your Furniture
+          <div className="animate-fade-in space-y-8">
+            <div className="text-center space-y-2 px-4">
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight">
+                Transform your Finds
               </h2>
-              <p className="text-lg text-gray-400 max-w-md mx-auto">
-                Choose how you want to get started
+              <p className="text-xl font-semibold text-purple-600">
+                Fix it, don't ditch it!
               </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <button
                 onClick={() => handleModeSelect("standard")}
-                className="btn w-full bg-gray-900 border-2 border-purple-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-purple-900/50 active:scale-98 transition-all group overflow-hidden"
+                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-purple-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
               >
-                <div className="flex items-center gap-6 px-6 py-8">
-                  <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 group-hover:scale-110 transition-all flex-shrink-0">
-                    <Zap className="w-8 h-8 text-purple-400" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
+                    <Zap className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-xl font-bold text-white mb-1">Standard Mode</div>
-                    <div className="text-sm text-gray-400">Take a photo and get AI-generated makeover ideas</div>
+                    <div className="text-lg font-bold text-gray-900 mb-0.5">Standard Mode</div>
+                    <div className="text-sm text-gray-600">Take a photo and get AI-generated makeover ideas</div>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => handleModeSelect("pro")}
-                className="btn w-full bg-gray-900 border-2 border-green-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-green-900/50 active:scale-98 transition-all group overflow-hidden"
+                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-green-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
               >
-                <div className="flex items-center gap-6 px-6 py-8">
-                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center group-hover:bg-green-500/30 group-hover:scale-110 transition-all flex-shrink-0">
-                    <Target className="w-8 h-8 text-green-400" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
+                    <Target className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+                    <div className="text-lg font-bold text-gray-900 mb-0.5 flex items-center gap-2">
                       Pro Mode
                       <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-md">NEW</span>
                     </div>
-                    <div className="text-sm text-gray-400">Upload before + target photos to match a specific look</div>
+                    <div className="text-sm text-gray-600">Upload before + target photos to match a specific look</div>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => handleModeSelect("creative-reuse")}
-                className="btn w-full bg-gray-900 border-2 border-orange-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-orange-900/50 active:scale-98 transition-all group overflow-hidden"
+                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-orange-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
               >
-                <div className="flex items-center gap-6 px-6 py-8">
-                  <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center group-hover:bg-orange-500/30 group-hover:scale-110 transition-all flex-shrink-0">
-                    <Recycle className="w-8 h-8 text-orange-400" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
+                    <Recycle className="w-7 h-7 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-xl font-bold text-white mb-1">Creative Reuse</div>
-                    <div className="text-sm text-gray-400">Turn found objects into something useful</div>
+                    <div className="text-lg font-bold text-gray-900 mb-0.5">Creative Reuse</div>
+                    <div className="text-sm text-gray-600">Turn found objects into something useful</div>
                   </div>
                 </div>
               </button>
             </div>
 
             {/* Saved Plans Button */}
-            <div className="pt-6 border-t border-gray-800">
+            <div className="pt-4 border-t border-gray-200">
               <button
                 onClick={() => setCurrentStep("saved")}
-                className="btn w-full bg-gray-900 border-2 border-gray-700 rounded-3xl hover:bg-gray-800 hover:border-gray-600 hover:shadow-xl active:scale-98 transition-all group"
+                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-md active:scale-98 transition-all group shadow-sm"
               >
-                <div className="flex items-center gap-6 px-6 py-6">
-                  <div className="w-12 h-12 bg-gray-700/30 rounded-full flex items-center justify-center group-hover:bg-gray-700/50 transition-all flex-shrink-0">
-                    <Bookmark className="w-6 h-6 text-gray-400 group-hover:text-gray-300" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors flex-shrink-0">
+                    <Bookmark className="w-6 h-6 text-gray-600" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-lg font-bold text-white mb-1">Saved Plans</div>
-                    <div className="text-sm text-gray-400">View your saved projects</div>
+                    <div className="text-base font-bold text-gray-900 mb-0.5">Saved Plans</div>
+                    <div className="text-sm text-gray-600">View your saved projects</div>
                   </div>
                 </div>
               </button>
