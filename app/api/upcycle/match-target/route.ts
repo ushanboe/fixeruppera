@@ -10,6 +10,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { images, identification, constraints } = body;
 
+    // DEBUG: Log incoming request data
+    console.log("=== MATCH-TARGET DEBUG START ===");
+    console.log("Received identification data:", JSON.stringify(identification, null, 2));
+    console.log("Received constraints:", JSON.stringify(constraints, null, 2));
+
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY not configured");
       return NextResponse.json(
@@ -34,6 +39,13 @@ export async function POST(request: NextRequest) {
     const beforeMaterial = identification?.before?.materials?.[0]?.label || "unknown material";
     const targetStyle = identification?.target?.style || "the target style";
     const targetFeatures = identification?.target?.keyFeatures || [];
+
+    // DEBUG: Log extracted values
+    console.log("Extracted values:");
+    console.log("  - beforeItem:", beforeItem);
+    console.log("  - beforeMaterial:", beforeMaterial);
+    console.log("  - targetStyle:", targetStyle);
+    console.log("  - targetFeatures:", targetFeatures);
 
     // Map budget band to actual ranges for Australian context
     const budgetRanges = {
@@ -121,6 +133,11 @@ IMPORTANT:
 - Consider the user's tools and budget constraints
 - NEVER reference furniture types other than ${beforeItem} in your instructions`;
 
+    // DEBUG: Log the prompt being sent
+    console.log("=== PROMPT BEING SENT TO OPENAI ===");
+    console.log(prompt);
+    console.log("=== END PROMPT ===");
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -153,10 +170,23 @@ IMPORTANT:
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
 
+    // DEBUG: Log OpenAI response
+    console.log("=== OPENAI RESPONSE ===");
+    console.log(JSON.stringify(result, null, 2));
+    console.log("=== END OPENAI RESPONSE ===");
+
     // Validate response structure
     if (!result.plan || !result.plan.steps || result.plan.steps.length === 0) {
       throw new Error("Invalid AI response structure");
     }
+
+    // DEBUG: Check if steps reference the correct item type
+    const stepsText = JSON.stringify(result.plan.steps);
+    console.log("=== STEP TEXT CHECK ===");
+    console.log("Steps contain beforeItem (" + beforeItem + "):", stepsText.includes(beforeItem));
+    console.log("Steps contain 'bed':", stepsText.toLowerCase().includes("bed"));
+    console.log("Steps contain 'frame':", stepsText.toLowerCase().includes("frame"));
+    console.log("=== MATCH-TARGET DEBUG END ===");
 
     return NextResponse.json(result);
   } catch (error: any) {
