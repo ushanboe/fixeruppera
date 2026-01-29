@@ -8,7 +8,7 @@ const openai = new OpenAI({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { images, constraints } = body;
+    const { images, identification, constraints } = body;
 
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY not configured");
@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extract identification data
+    const beforeItem = identification?.before?.candidates?.[0]?.label || "furniture item";
+    const beforeMaterial = identification?.before?.materials?.[0]?.label || "unknown material";
+    const targetStyle = identification?.target?.style || "the target style";
+    const targetFeatures = identification?.target?.keyFeatures || [];
+
     // Map budget band to actual ranges for Australian context
     const budgetRanges = {
       "$": { min: 20, max: 100, description: "minimal budget" },
@@ -37,18 +43,24 @@ export async function POST(request: NextRequest) {
     };
     const budgetInfo = budgetRanges[constraints.budgetBand as keyof typeof budgetRanges] || budgetRanges["$$"];
 
-    const prompt = `Analyze these two furniture photos to create a transformation plan.
+    const prompt = `Create a transformation plan to convert the user's furniture to match the target style.
 
-PHOTO 1 - BEFORE: The current state of the user's furniture item
-PHOTO 2 - TARGET: The inspiration/target look the user wants to achieve
+BEFORE ITEM (already identified):
+- Item Type: ${beforeItem}
+- Material: ${beforeMaterial}
 
-The target photo shows the desired style. Analyze it to determine the style goal automatically.
+TARGET STYLE (already identified):
+- Style: ${targetStyle}
+${targetFeatures.length > 0 ? `- Key Features: ${targetFeatures.join(", ")}` : ""}
 
 USER CONSTRAINTS:
 - Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
 - Tools available: ${constraints.tools} (basic = hand tools only, power = power tools available)
 - Timeline: ${constraints.timeBand}
 - Experience: ${constraints.experience || "beginner"}
+
+CRITICAL: Generate instructions specifically for transforming a ${beforeItem} made of ${beforeMaterial} to match ${targetStyle} style.
+DO NOT generate instructions for other furniture types. The item is a ${beforeItem}, not a bed, chair, or any other item.
 
 ANALYZE AND PROVIDE:
 1. Target Style Summary: Identify the style, era, and key visual elements of the target photo
@@ -82,8 +94,8 @@ Provide response as JSON:
     "steps": [
       {
         "n": number,
-        "title": "Step title",
-        "detail": "Detailed instructions specific to achieving the target look. Reference the target style."
+        "title": "Step title specific to ${beforeItem}",
+        "detail": "Detailed instructions for transforming this ${beforeItem} made of ${beforeMaterial}. Include timing, techniques appropriate for ${beforeMaterial}, and how to achieve ${targetStyle} aesthetic."
       }
     ],
     "safety": [
@@ -101,11 +113,13 @@ Provide response as JSON:
 }
 
 IMPORTANT:
-- Be specific about what changes are needed to match the target
-- Materials and quantities should be realistic for the actual items shown
-- Steps should explicitly reference achieving the target look
+- Generate ALL instructions specifically for a ${beforeItem} (NOT for beds, chairs, or other items)
+- Consider that the item is made of ${beforeMaterial} when suggesting treatments
+- Be specific about what changes are needed to match ${targetStyle}
+- Materials and quantities should be realistic for the actual ${beforeItem} size and surface area
+- Steps should explicitly reference the ${beforeItem} and achieving ${targetStyle} style
 - Consider the user's tools and budget constraints
-- If items are very different types, note this and adapt the plan accordingly`;
+- NEVER reference furniture types other than ${beforeItem} in your instructions`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

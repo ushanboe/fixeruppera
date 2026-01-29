@@ -112,7 +112,7 @@ export default function Home() {
     setConstraints(constraintsData);
     setCurrentStep("analysis");
 
-    // Call Pro Mode match-target API
+    // Call Pro Mode match-target API with identification data
     const response = await fetch("/api/upcycle/match-target", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,6 +121,7 @@ export default function Home() {
           { role: "before", dataUrl: capturedImage },
           { role: "target", dataUrl: targetImage }
         ],
+        identification: identificationData,
         constraints: constraintsData,
       }),
     });
