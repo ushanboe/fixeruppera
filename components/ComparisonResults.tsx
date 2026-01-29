@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, CheckCircle2, ShoppingCart, AlertTriangle } from "lucide-react";
+import { ArrowRight, CheckCircle2, ShoppingCart, AlertTriangle, Sparkles } from "lucide-react";
 import PlanView from "./PlanView";
 
 interface ComparisonResultsProps {
