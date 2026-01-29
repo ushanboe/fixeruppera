@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import sharp from "sharp";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,6 +9,36 @@ const openai = new OpenAI({
 // Configuration - easy to switch providers
 const MOCKUP_PROVIDER = process.env.MOCKUP_PROVIDER || "stability"; // "stability" or "dalle"
 const IMAGE_STRENGTH = parseFloat(process.env.IMAGE_STRENGTH || "0.30"); // 0.25-0.35 recommended
+
+// Stability AI SDXL allowed dimensions [width, height, aspectRatio]
+const ALLOWED_DIMENSIONS = [
+  [1024, 1024, 1.0],      // Square
+  [1152, 896, 1.286],     // Landscape
+  [1216, 832, 1.462],     // Landscape
+  [1344, 768, 1.75],      // Landscape
+  [1536, 640, 2.4],       // Landscape
+  [640, 1536, 0.417],     // Portrait
+  [768, 1344, 0.571],     // Portrait
+  [832, 1216, 0.684],     // Portrait
+  [896, 1152, 0.777],     // Portrait
+] as const;
+
+function chooseClosestDimension(width: number, height: number): [number, number] {
+  const aspectRatio = width / height;
+
+  let closestDimension = ALLOWED_DIMENSIONS[0];
+  let smallestDiff = Math.abs(aspectRatio - ALLOWED_DIMENSIONS[0][2]);
+
+  for (const dimension of ALLOWED_DIMENSIONS) {
+    const diff = Math.abs(aspectRatio - dimension[2]);
+    if (diff < smallestDiff) {
+      smallestDiff = diff;
+      closestDimension = dimension;
+    }
+  }
+
+  return [closestDimension[0], closestDimension[1]];
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +81,22 @@ async function generateWithStability(beforeImage: string, concept: any, count: n
     throw new Error("Invalid image data URL");
   }
 
+  // Resize image to closest allowed dimension
+  const imageBuffer = Buffer.from(base64Image, 'base64');
+  const metadata = await sharp(imageBuffer).metadata();
+  const [targetWidth, targetHeight] = chooseClosestDimension(metadata.width || 1024, metadata.height || 1024);
+
+  console.log(`Original image: ${metadata.width}x${metadata.height}`);
+  console.log(`Resizing to: ${targetWidth}x${targetHeight} (closest allowed dimension)`);
+
+  const resizedImageBuffer = await sharp(imageBuffer)
+    .resize(targetWidth, targetHeight, {
+      fit: 'cover',
+      position: 'center',
+    })
+    .png()
+    .toBuffer();
+
   for (let i = 0; i < Math.min(count, 4); i++) {
     try {
       console.log(`Generating mockup ${i + 1}/${count} with Stability AI...`);
@@ -61,9 +108,8 @@ async function generateWithStability(beforeImage: string, concept: any, count: n
       // Prepare form data
       const formData = new FormData();
 
-      // Convert base64 to blob
-      const imageBuffer = Buffer.from(base64Image, 'base64');
-      const blob = new Blob([imageBuffer], { type: 'image/png' });
+      // Convert resized buffer to blob
+      const blob = new Blob([resizedImageBuffer], { type: 'image/png' });
       formData.append('init_image', blob);
 
       // Add text prompts

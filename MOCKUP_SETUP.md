@@ -120,6 +120,12 @@ Change `MOCKUP_PROVIDER` between requests to compare results.
 - Verify account has credits (Stability AI)
 - Check console logs for detailed error messages
 
+### Image Dimension Notes
+- Uploaded images are automatically resized to the closest allowed Stability AI dimension
+- Allowed dimensions: 1024x1024, 1152x896, 1216x832, 1344x768, 1536x640, 640x1536, 768x1344, 832x1216, 896x1152
+- The app chooses the dimension with the closest aspect ratio to preserve image composition
+- Check console logs to see original and resized dimensions
+
 ---
 
 ## Cost Examples
