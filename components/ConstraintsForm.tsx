@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Palette, Wrench, DollarSign, Clock } from "lucide-react";
+import { ChevronLeft, Palette, Wrench, DollarSign, Clock, Target, User, Box, Gift } from "lucide-react";
 
 interface ConstraintsFormProps {
   image: string;
   onSubmit: (constraints: any) => void;
   onBack: () => void;
-  mode?: "standard" | "pro";
+  mode?: "standard" | "pro" | "creative-reuse";
 }
 
 const STYLES = [
@@ -37,26 +37,77 @@ const TIMES = [
   { id: "project", label: "Multi-Week", description: "Take your time", value: "multi-week" },
 ];
 
+// Creative Reuse Mode Constants
+const USE_CASES = [
+  { id: "functional", label: "Functional", emoji: "🔧", description: "Shelves, organizers, planters" },
+  { id: "decorative", label: "Decorative", emoji: "🎨", description: "Wall art, centerpieces" },
+  { id: "storage", label: "Storage", emoji: "📦", description: "Bins, racks, holders" },
+  { id: "outdoor", label: "Outdoor", emoji: "🌳", description: "Garden, patio, yard" },
+  { id: "gift", label: "Gift/Craft", emoji: "🎁", description: "Unique presents" },
+  { id: "open", label: "Open to Ideas", emoji: "✨", description: "Surprise me!" },
+];
+
+const SKILL_LEVELS = [
+  { id: "beginner", label: "Beginner", description: "Simple assembly, minimal cutting" },
+  { id: "intermediate", label: "Intermediate", description: "Drilling, measuring, light mods" },
+  { id: "advanced", label: "Advanced", description: "Welding, complex carpentry" },
+];
+
+const MATERIALS_AVAILABLE = [
+  { id: "none", label: "None", description: "Use object as-is or adhesives" },
+  { id: "basic-craft", label: "Basic Craft", description: "Paint, glue, fabric, hand tools" },
+  { id: "power-tools", label: "Power Tools", description: "Drill, saw, sander available" },
+  { id: "welding", label: "Welding/Advanced", description: "Metal work, complex fabrication" },
+];
+
+const INTENDED_AUDIENCE = [
+  { id: "personal", label: "Personal Use", emoji: "🏠", description: "Keep for yourself" },
+  { id: "gift", label: "Gift", emoji: "🎁", description: "Present for someone" },
+  { id: "sell", label: "Sell", emoji: "💰", description: "List on marketplace" },
+  { id: "donation", label: "Donation", emoji: "❤️", description: "Give to charity" },
+];
+
 export default function ConstraintsForm({ image, onSubmit, onBack, mode = "standard" }: ConstraintsFormProps) {
+  // Standard/Pro mode state
   const [styleGoal, setStyleGoal] = useState("");
   const [tools, setTools] = useState("");
   const [budget, setBudget] = useState("");
   const [time, setTime] = useState("");
 
+  // Creative Reuse mode state
+  const [useCase, setUseCase] = useState("");
+  const [skillLevel, setSkillLevel] = useState("");
+  const [materialsAvailable, setMaterialsAvailable] = useState("");
+  const [intendedAudience, setIntendedAudience] = useState("");
+
   const isProMode = mode === "pro";
-  const isValid = isProMode ? (tools && budget && time) : (styleGoal && tools && budget && time);
+  const isCreativeReuse = mode === "creative-reuse";
+
+  const isValid = isCreativeReuse
+    ? (useCase && skillLevel && materialsAvailable && intendedAudience && budget && time)
+    : isProMode
+      ? (tools && budget && time)
+      : (styleGoal && tools && budget && time);
 
   const handleSubmit = () => {
     if (isValid) {
       const constraints: any = {
-        tools,
         budgetBand: budget,
         timeBand: time,
       };
 
-      // Only include styleGoal in standard mode
-      if (!isProMode) {
-        constraints.styleGoal = styleGoal;
+      if (isCreativeReuse) {
+        // Creative Reuse mode constraints
+        constraints.useCase = useCase;
+        constraints.skillLevel = skillLevel;
+        constraints.materialsAvailable = materialsAvailable;
+        constraints.intendedAudience = intendedAudience;
+      } else {
+        // Standard/Pro mode constraints
+        constraints.tools = tools;
+        if (!isProMode) {
+          constraints.styleGoal = styleGoal;
+        }
       }
 
       onSubmit(constraints);
@@ -75,17 +126,17 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
         </button>
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-white mb-2">
-            {isProMode ? "Project Details" : "Tell us your vision"}
+            {isCreativeReuse ? "Repurposing Goals" : isProMode ? "Project Details" : "Tell us your vision"}
           </h2>
           <p className="text-gray-400">
-            {isProMode ? "Help us create your transformation plan" : "Help us find the perfect makeover plan"}
+            {isCreativeReuse ? "Help us find creative ways to reuse this object" : isProMode ? "Help us create your transformation plan" : "Help us find the perfect makeover plan"}
           </p>
         </div>
         <img src={image} alt="Preview" className="w-20 h-20 object-cover rounded-xl border-2 border-gray-700" />
       </div>
 
       {/* Style Goal - Only show in standard mode */}
-      {!isProMode && (
+      {!isProMode && !isCreativeReuse && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-white font-semibold">
             <Palette className="w-5 h-5 text-purple-400" />
@@ -110,34 +161,144 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
         </div>
       )}
 
-      {/* Tools */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-white font-semibold">
-          <Wrench className="w-5 h-5 text-purple-400" />
-          <span>Available Tools</span>
+      {/* Use Case - Only show in Creative Reuse mode */}
+      {isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <Target className="w-5 h-5 text-orange-400" />
+            <span>Use Case</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {USE_CASES.map((usecase) => (
+              <button
+                key={usecase.id}
+                onClick={() => setUseCase(usecase.id)}
+                className={`btn p-4 rounded-xl border-2 transition-all ${
+                  useCase === usecase.id
+                    ? "border-orange-500 bg-orange-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="text-2xl mb-1">{usecase.emoji}</div>
+                <div className="text-sm font-medium text-white">{usecase.label}</div>
+                <div className="text-xs text-gray-400 mt-1">{usecase.description}</div>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="space-y-2">
-          {TOOLS.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => setTools(tool.id)}
-              className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
-                tools === tool.id
-                  ? "border-purple-500 bg-purple-500/20"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600"
-              }`}
-            >
-              <div className="font-semibold text-white">{tool.label}</div>
-              <div className="text-sm text-gray-400">{tool.description}</div>
-            </button>
-          ))}
+      )}
+
+      {/* Tools - Only show in Standard/Pro mode */}
+      {!isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <Wrench className={`w-5 h-5 ${isProMode ? "text-green-400" : "text-purple-400"}`} />
+            <span>Available Tools</span>
+          </div>
+          <div className="space-y-2">
+            {TOOLS.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => setTools(tool.id)}
+                className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  tools === tool.id
+                    ? isProMode
+                      ? "border-green-500 bg-green-500/20"
+                      : "border-purple-500 bg-purple-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="font-semibold text-white">{tool.label}</div>
+                <div className="text-sm text-gray-400">{tool.description}</div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Skill Level - Only show in Creative Reuse mode */}
+      {isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <User className="w-5 h-5 text-orange-400" />
+            <span>Skill Level</span>
+          </div>
+          <div className="space-y-2">
+            {SKILL_LEVELS.map((skill) => (
+              <button
+                key={skill.id}
+                onClick={() => setSkillLevel(skill.id)}
+                className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  skillLevel === skill.id
+                    ? "border-orange-500 bg-orange-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="font-semibold text-white">{skill.label}</div>
+                <div className="text-sm text-gray-400">{skill.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Materials Available - Only show in Creative Reuse mode */}
+      {isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <Box className="w-5 h-5 text-orange-400" />
+            <span>Materials Available</span>
+          </div>
+          <div className="space-y-2">
+            {MATERIALS_AVAILABLE.map((material) => (
+              <button
+                key={material.id}
+                onClick={() => setMaterialsAvailable(material.id)}
+                className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  materialsAvailable === material.id
+                    ? "border-orange-500 bg-orange-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="font-semibold text-white">{material.label}</div>
+                <div className="text-sm text-gray-400">{material.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Intended Audience - Only show in Creative Reuse mode */}
+      {isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <Gift className="w-5 h-5 text-orange-400" />
+            <span>Intended Audience</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {INTENDED_AUDIENCE.map((audience) => (
+              <button
+                key={audience.id}
+                onClick={() => setIntendedAudience(audience.id)}
+                className={`btn p-4 rounded-xl border-2 transition-all ${
+                  intendedAudience === audience.id
+                    ? "border-orange-500 bg-orange-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="text-2xl mb-1">{audience.emoji}</div>
+                <div className="text-sm font-medium text-white">{audience.label}</div>
+                <div className="text-xs text-gray-400 mt-1">{audience.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Budget */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-white font-semibold">
-          <DollarSign className="w-5 h-5 text-purple-400" />
+          <DollarSign className={`w-5 h-5 ${isCreativeReuse ? "text-orange-400" : isProMode ? "text-green-400" : "text-purple-400"}`} />
           <span>Budget</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -147,7 +308,11 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
               onClick={() => setBudget(budgetOption.value)}
               className={`btn p-4 rounded-xl border-2 transition-all ${
                 budget === budgetOption.value
-                  ? "border-purple-500 bg-purple-500/20"
+                  ? isCreativeReuse
+                    ? "border-orange-500 bg-orange-500/20"
+                    : isProMode
+                      ? "border-green-500 bg-green-500/20"
+                      : "border-purple-500 bg-purple-500/20"
                   : "border-gray-700 bg-gray-800 hover:border-gray-600"
               }`}
             >
@@ -161,7 +326,7 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
       {/* Time */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-white font-semibold">
-          <Clock className="w-5 h-5 text-purple-400" />
+          <Clock className={`w-5 h-5 ${isCreativeReuse ? "text-orange-400" : isProMode ? "text-green-400" : "text-purple-400"}`} />
           <span>Time Available</span>
         </div>
         <div className="space-y-2">
@@ -171,7 +336,11 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
               onClick={() => setTime(timeOption.value)}
               className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
                 time === timeOption.value
-                  ? "border-purple-500 bg-purple-500/20"
+                  ? isCreativeReuse
+                    ? "border-orange-500 bg-orange-500/20"
+                    : isProMode
+                      ? "border-green-500 bg-green-500/20"
+                      : "border-purple-500 bg-purple-500/20"
                   : "border-gray-700 bg-gray-800 hover:border-gray-600"
               }`}
             >
@@ -188,13 +357,15 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
         disabled={!isValid}
         className={`btn w-full py-4 rounded-xl font-bold text-lg transition-all ${
           isValid
-            ? isProMode
-              ? "bg-green-600 text-white hover:bg-green-700"
-              : "bg-purple-600 text-white hover:bg-purple-700"
+            ? isCreativeReuse
+              ? "bg-orange-600 text-white hover:bg-orange-700"
+              : isProMode
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-purple-600 text-white hover:bg-purple-700"
             : "bg-gray-800 text-gray-600 cursor-not-allowed border-2 border-gray-700"
         }`}
       >
-        {isProMode ? "Generate Transformation Plan" : "Get Makeover Ideas"}
+        {isCreativeReuse ? "Get Creative Ideas" : isProMode ? "Generate Transformation Plan" : "Get Makeover Ideas"}
       </button>
     </div>
   );

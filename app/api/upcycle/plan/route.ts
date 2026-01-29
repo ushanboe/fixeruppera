@@ -29,8 +29,80 @@ export async function POST(request: NextRequest) {
     const ideaTitle = selectedIdea?.title || "makeover";
     const ideaDifficulty = selectedIdea?.difficulty || "medium";
     const ideaStepsPreview = selectedIdea?.stepsPreview || [];
+    const keyTransformations = selectedIdea?.keyTransformations || [];
 
-    const prompt = `Generate a detailed, realistic DIY plan for this furniture upcycling project.
+    // Detect Creative Reuse mode (has useCase instead of styleGoal)
+    const isCreativeReuse = !!constraints.useCase;
+
+    const prompt = isCreativeReuse
+      ? `Generate a detailed repurposing plan to transform this found object.
+
+FROM: ${itemType}
+TO: ${ideaTitle}
+
+TRANSFORMATION APPROACH:
+${keyTransformations.length > 0 ? `- Keep: ${keyTransformations[1] || "core structure"}
+- Change: ${keyTransformations[0] || "finish and appearance"}
+- Add: ${keyTransformations[2] || "new functional elements"}` : "- Transform the object while maintaining its integrity"}
+
+OBJECT DETAILS:
+- Current item: ${itemType}
+- Materials: ${materials}
+- Condition: ${conditionNotes}
+- Issues: ${issues}
+- Safety concerns: ${safetyFlags}
+
+USER CONTEXT:
+- Skill level: ${constraints.skillLevel}
+- Materials available: ${constraints.materialsAvailable}
+- Intended audience: ${constraints.intendedAudience}
+- Budget: ${constraints.budgetBand}
+- Timeline: ${constraints.timeBand}
+
+CRITICAL REQUIREMENTS:
+1. This is a REPURPOSING project - transform from one purpose to another
+2. Calculate material quantities based on actual object size
+3. Include disassembly/cleaning steps if needed
+4. Provide modification instructions specific to the transformation
+5. Include assembly/installation steps for new purpose
+6. Use Australian products (Bunnings context) and realistic pricing
+7. Safety warnings specific to repurposing (sharp edges, rust, stability)
+8. Suggest where to take photos/sketches at key steps
+
+Provide response as JSON:
+{
+  "title": "Transformation plan title (FROM → TO format)",
+  "difficulty": "beginner|intermediate|advanced",
+  "timeEstimate": {"minHours": number, "maxHours": number},
+  "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+  "materials": [
+    {
+      "item": "Specific product name",
+      "qty": "Realistic quantity for transformation"
+    }
+  ],
+  "steps": [
+    {
+      "n": 1,
+      "title": "Step title",
+      "detail": "Detailed instructions for this transformation step. Include timing and techniques."
+    }
+  ],
+  "safety": [
+    {
+      "level": "warning|danger",
+      "text": "Specific safety concern for repurposing and how to address it"
+    }
+  ],
+  "resale": {
+    "enabled": true,
+    "range": {"min": number, "max": number, "currency": "AUD"},
+    "note": "Value assessment for the repurposed item"
+  }
+}
+
+Generate 5-8 detailed transformation steps with 6-12 materials.`
+      : `Generate a detailed, realistic DIY plan for this furniture upcycling project.
 
 ITEM DETAILS:
 - Type: ${itemType}

@@ -32,7 +32,63 @@ export async function POST(request: NextRequest) {
     };
     const budgetInfo = budgetRanges[constraints.budgetBand as keyof typeof budgetRanges] || budgetRanges["$$"];
 
-    const prompt = `Generate 4-5 realistic upcycling ideas for this furniture item.
+    // Detect Creative Reuse mode (has useCase instead of styleGoal)
+    const isCreativeReuse = !!constraints.useCase;
+
+    const prompt = isCreativeReuse
+      ? `Generate 5 GENUINELY DIFFERENT creative repurposing ideas for this found object.
+
+OBJECT DETAILS:
+- Current item: ${itemType}
+- Materials: ${materials}
+- Condition: ${issues}
+- Safety concerns: ${safetyFlags}
+
+USER CONSTRAINTS:
+- Use case preference: ${constraints.useCase}
+- Skill level: ${constraints.skillLevel}
+- Materials available: ${constraints.materialsAvailable}
+- Intended audience: ${constraints.intendedAudience}
+- Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
+- Time: ${constraints.timeBand}
+
+CRITICAL DIVERSITY REQUIREMENTS:
+1. Each idea MUST be in a DIFFERENT CATEGORY (functional/decorative/storage/outdoor/gift)
+2. NO MORE than 1 idea per category - spread across categories
+3. At least one "beginner" difficulty and one "intermediate/advanced" difficulty
+4. Consider UNEXPECTED uses based on shape, material, and size
+5. Balance creativity with practicality - ideas must be achievable
+6. Use Australian context (climate, products available at Bunnings, lifestyle)
+7. Consider the actual materials and dimensions when suggesting transformations
+
+EXAMPLE DIVERSITY (for old wooden ladder):
+- Idea 1: Vertical herb garden (functional/outdoor)
+- Idea 2: Rustic bookshelf (decorative/indoor)
+- Idea 3: Bathroom towel rack (functional/bathroom)
+- Idea 4: Photo/art display wall (decorative/wall)
+- Idea 5: Kitchen pot rack (storage/kitchen)
+
+Notice: 5 completely different categories, different rooms, different purposes!
+
+Provide response as JSON:
+{
+  "ideas": [
+    {
+      "id": "unique-slug",
+      "title": "Specific descriptive title showing the transformation",
+      "category": "functional|decorative|storage|outdoor|gift",
+      "whyItWorks": "Why this repurposing makes sense given object's characteristics",
+      "difficulty": "beginner|intermediate|advanced",
+      "timeEstimate": {"minHours": number, "maxHours": number},
+      "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+      "keyTransformations": ["What changes", "What stays same", "What gets added"],
+      "stepsPreview": ["Step 1", "Step 2", "Step 3"]
+    }
+  ]
+}
+
+Generate 5 diverse ideas - remember, each in a DIFFERENT category!`
+      : `Generate 4-5 realistic upcycling ideas for this furniture item.
 
 ITEM DETAILS:
 - Type: ${itemType}
@@ -44,8 +100,7 @@ USER CONSTRAINTS:
 - Style goal: ${constraints.styleGoal}
 - Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
 - Tools available: ${constraints.tools} (basic = hand tools only, power = power tools available)
-- Timeline: ${constraints.timeline}
-- Experience: ${constraints.experience}
+- Timeline: ${constraints.timeBand}
 
 IMPORTANT GUIDELINES:
 1. Generate ideas that match the ACTUAL materials (if metal, suggest metal finishing; if wood, suggest wood finishing)

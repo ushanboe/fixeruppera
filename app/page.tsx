@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Upload, Sparkles, Zap, Target } from "lucide-react";
+import { Camera, Upload, Sparkles, Zap, Target, Recycle } from "lucide-react";
 import PhotoCapture from "@/components/PhotoCapture";
 import DualPhotoCapture from "@/components/DualPhotoCapture";
 import IdentificationResults from "@/components/IdentificationResults";
@@ -12,7 +12,7 @@ import IdeasList from "@/components/IdeasList";
 import PlanView from "@/components/PlanView";
 import ComparisonResults from "@/components/ComparisonResults";
 
-type AppMode = "standard" | "pro";
+type AppMode = "standard" | "pro" | "creative-reuse";
 type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison";
 
 export default function Home() {
@@ -188,6 +188,18 @@ export default function Home() {
         </div>
       )}
 
+      {/* Progress Indicator - Creative Reuse Mode */}
+      {appMode === "creative-reuse" && currentStep !== "upload" && currentStep !== "identification" && (
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-2">
+            <div className={`h-1 flex-1 rounded-full ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
+            <div className={`h-1 flex-1 rounded-full ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
+            <div className={`h-1 flex-1 rounded-full ${["ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-800"}`} />
+            <div className={`h-1 flex-1 rounded-full ${currentStep === "plan" ? "bg-orange-500" : "bg-gray-800"}`} />
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-8 safe-bottom pb-12">
         {currentStep === "mode" && (
@@ -234,6 +246,21 @@ export default function Home() {
                   </div>
                 </div>
               </button>
+
+              <button
+                onClick={() => handleModeSelect("creative-reuse")}
+                className="btn w-full bg-gray-900 border-2 border-orange-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-orange-900/50 active:scale-98 transition-all group overflow-hidden"
+              >
+                <div className="flex items-center gap-6 px-6 py-8">
+                  <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center group-hover:bg-orange-500/30 group-hover:scale-110 transition-all flex-shrink-0">
+                    <Recycle className="w-8 h-8 text-orange-400" strokeWidth={2.5} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-xl font-bold text-white mb-1">Creative Reuse</div>
+                    <div className="text-sm text-gray-400">Turn found objects into something useful</div>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
         )}
@@ -246,6 +273,20 @@ export default function Home() {
               </h2>
               <p className="text-lg text-gray-400 max-w-md mx-auto">
                 Capture your furniture to get AI-powered ideas
+              </p>
+            </div>
+            <PhotoCapture onCapture={handleImageCapture} />
+          </div>
+        )}
+
+        {currentStep === "upload" && appMode === "creative-reuse" && (
+          <div className="animate-fade-in space-y-10">
+            <div className="text-center space-y-3">
+              <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
+                Take a Photo
+              </h2>
+              <p className="text-lg text-gray-400 max-w-md mx-auto">
+                Capture your found object to get creative repurposing ideas
               </p>
             </div>
             <PhotoCapture onCapture={handleImageCapture} />
@@ -296,6 +337,17 @@ export default function Home() {
               onSubmit={handleConstraintsSubmit}
               onBack={() => setCurrentStep("upload")}
               mode="standard"
+            />
+          </div>
+        )}
+
+        {currentStep === "constraints" && appMode === "creative-reuse" && (
+          <div className="animate-slide-up">
+            <ConstraintsForm
+              image={capturedImage!}
+              onSubmit={handleConstraintsSubmit}
+              onBack={() => setCurrentStep("upload")}
+              mode="creative-reuse"
             />
           </div>
         )}
