@@ -34,6 +34,38 @@ export async function POST(request: NextRequest) {
     // Detect Creative Reuse mode (has useCase instead of styleGoal)
     const isCreativeReuse = !!constraints.useCase;
 
+    // Analyze materials to determine appropriate treatments (Creative Reuse mode)
+    let materialGuidance = "";
+    if (isCreativeReuse) {
+      const materialsList = materials.toLowerCase();
+      const hasFabric = materialsList.includes('fabric') || materialsList.includes('upholstery') || materialsList.includes('cloth') || materialsList.includes('textile');
+      const hasWood = materialsList.includes('wood') || materialsList.includes('timber') || materialsList.includes('oak') || materialsList.includes('pine');
+      const hasMetal = materialsList.includes('metal') || materialsList.includes('iron') || materialsList.includes('steel') || materialsList.includes('aluminum');
+      const hasLeather = materialsList.includes('leather');
+
+      materialGuidance = "\n\nMATERIAL-SPECIFIC REQUIREMENTS:\n";
+
+      if (hasFabric) {
+        materialGuidance += `- FABRIC/UPHOLSTERY: Include steps for reupholstering, fabric cleaning, or slipcover installation. DO NOT include sanding, staining, or wood finishing steps for fabric surfaces.\n`;
+      }
+
+      if (hasWood && !hasFabric) {
+        materialGuidance += `- WOOD: Include sanding, staining, painting, or wood finishing steps as appropriate.\n`;
+      }
+
+      if (hasWood && hasFabric) {
+        materialGuidance += `- WOOD FRAME + FABRIC: Separate steps for wood parts (sanding/staining frame) and fabric parts (reupholstering/cleaning seat).\n`;
+      }
+
+      if (hasMetal) {
+        materialGuidance += `- METAL: Include rust removal, metal primer, and appropriate metal finishing (spray paint, powder coating). DO NOT suggest wood staining.\n`;
+      }
+
+      if (hasLeather) {
+        materialGuidance += `- LEATHER: Include leather conditioning, cleaning, or leather dye steps. DO NOT suggest standard paint unless leather paint is specified.\n`;
+      }
+    }
+
     const prompt = isCreativeReuse
       ? `Generate a detailed repurposing plan to transform this found object.
 
@@ -50,7 +82,7 @@ OBJECT DETAILS:
 - Materials: ${materials}
 - Condition: ${conditionNotes}
 - Issues: ${issues}
-- Safety concerns: ${safetyFlags}
+- Safety concerns: ${safetyFlags}${materialGuidance}
 
 USER CONTEXT:
 - Skill level: ${constraints.skillLevel}
