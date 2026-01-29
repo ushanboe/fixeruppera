@@ -333,6 +333,7 @@ export default function Home() {
               idea={selectedIdea}
               analysis={analysisData}
               constraints={constraints}
+              beforeImage={capturedImage || undefined}
               onBack={() => setCurrentStep("ideas")}
             />
           </div>

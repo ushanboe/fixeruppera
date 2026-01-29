@@ -10,19 +10,23 @@ import {
   DollarSign,
   CheckCircle2,
   Share2,
+  Sparkles,
 } from "lucide-react";
+import MockupGallery from "./MockupGallery";
 
 interface PlanViewProps {
   idea: any;
   analysis: any;
   constraints: any;
+  beforeImage?: string;
   onBack: () => void;
 }
 
-export default function PlanView({ idea, analysis, constraints, onBack }: PlanViewProps) {
+export default function PlanView({ idea, analysis, constraints, beforeImage, onBack }: PlanViewProps) {
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [showMockups, setShowMockups] = useState(false);
 
   useEffect(() => {
     // Check if this is Pro Mode (analysis contains a plan from match-target)
@@ -183,6 +187,15 @@ export default function PlanView({ idea, analysis, constraints, onBack }: PlanVi
         </div>
       </div>
 
+      {/* Generate Mockups Button */}
+      <button
+        onClick={() => setShowMockups(true)}
+        className="btn w-full px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 active:scale-98 transition-all shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2"
+      >
+        <Sparkles className="w-5 h-5" />
+        Generate Visual Previews
+      </button>
+
       {/* Materials List */}
       <div className="bg-white rounded-xl p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -274,6 +287,24 @@ export default function PlanView({ idea, analysis, constraints, onBack }: PlanVi
           </div>
           <p className="text-sm text-green-800">{plan.resale.note}</p>
         </div>
+      )}
+
+      {/* Mockup Gallery Modal */}
+      {showMockups && beforeImage && (
+        <MockupGallery
+          beforeImage={beforeImage}
+          concept={{
+            itemType: analysis?.objectCandidates?.[0]?.label || "furniture piece",
+            material: analysis?.materials?.[0]?.label || "wood",
+            currentFinish: "existing finish",
+            targetStyle: constraints?.styleGoal || idea?.title || "modern",
+            targetFinish: "refreshed finish",
+            targetColor: "updated color",
+            hardware: "updated hardware",
+            notes: plan?.title || "",
+          }}
+          onClose={() => setShowMockups(false)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, Sparkles, CheckCircle2, ShoppingCart, AlertTriangle } from "lucide-react";
 import PlanView from "./PlanView";
+import MockupGallery from "./MockupGallery";
 
 interface ComparisonResultsProps {
   beforeImage: string;
@@ -14,6 +15,7 @@ interface ComparisonResultsProps {
 
 export default function ComparisonResults({ beforeImage, targetImage, data, constraints, onBack }: ComparisonResultsProps) {
   const [showPlan, setShowPlan] = useState(false);
+  const [showMockups, setShowMockups] = useState(false);
 
   if (!data) {
     return (
@@ -30,6 +32,7 @@ export default function ComparisonResults({ beforeImage, targetImage, data, cons
         idea={{ id: "pro-transformation", title: "Pro Mode Transformation" }}
         analysis={data}
         constraints={constraints}
+        beforeImage={beforeImage}
         onBack={() => setShowPlan(false)}
       />
     );
@@ -157,6 +160,14 @@ export default function ComparisonResults({ beforeImage, targetImage, data, cons
           >
             View Full Transformation Plan
           </button>
+
+          <button
+            onClick={() => setShowMockups(true)}
+            className="btn w-full px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg hover:from-purple-700 hover:to-pink-700 active:scale-98 transition-all shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-5 h-5" />
+            Generate Visual Previews
+          </button>
         </>
       )}
 
@@ -166,6 +177,24 @@ export default function ComparisonResults({ beforeImage, targetImage, data, cons
       >
         Back
       </button>
+
+      {/* Mockup Gallery Modal */}
+      {showMockups && (
+        <MockupGallery
+          beforeImage={beforeImage}
+          concept={{
+            itemType: data?.targetSummary?.style || "furniture piece",
+            material: "wood",
+            currentFinish: "existing finish",
+            targetStyle: data?.targetSummary?.style || "modern",
+            targetFinish: "refreshed finish",
+            targetColor: data?.targetSummary?.keyElements?.[0] || "updated color",
+            hardware: data?.targetSummary?.keyElements?.[1] || "updated hardware",
+            notes: plan?.title || "",
+          }}
+          onClose={() => setShowMockups(false)}
+        />
+      )}
     </div>
   );
 }
