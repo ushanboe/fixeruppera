@@ -35,6 +35,54 @@ export async function POST(request: NextRequest) {
     // Detect Creative Reuse mode (has useCase instead of styleGoal)
     const isCreativeReuse = !!constraints.useCase;
 
+    // Analyze materials to determine appropriate treatments
+    const materialsList = materials.toLowerCase();
+    const hasFabric = materialsList.includes('fabric') || materialsList.includes('upholstery') || materialsList.includes('cloth') || materialsList.includes('textile');
+    const hasWood = materialsList.includes('wood') || materialsList.includes('timber') || materialsList.includes('oak') || materialsList.includes('pine');
+    const hasMetal = materialsList.includes('metal') || materialsList.includes('iron') || materialsList.includes('steel') || materialsList.includes('aluminum');
+    const hasLeather = materialsList.includes('leather');
+    const hasPlastic = materialsList.includes('plastic');
+
+    // Build material-specific guidance
+    let materialGuidance = "\nMATERIAL-SPECIFIC RULES (CRITICAL - MUST FOLLOW):\n";
+
+    if (hasFabric) {
+      materialGuidance += `- FABRIC DETECTED: This item has fabric/upholstery
+  * DO NOT suggest sanding, staining, or painting the fabric
+  * DO suggest: reupholstering, fabric cleaning, slipcovers, fabric paint (if appropriate)
+  * DO suggest: steam cleaning, professional upholstery cleaning, new cushions
+  * Example good ideas: "Reupholster in modern fabric", "Add washable slipcover", "Clean and refresh existing upholstery"
+  * Example BAD ideas: ❌ "Sand and stain rustic" ❌ "Apply wood finish" ❌ "Paint distressed white"\n`;
+    }
+
+    if (hasWood && !hasFabric) {
+      materialGuidance += `- WOOD DETECTED (no fabric covering): This is bare wood
+  * DO suggest: sanding, staining, painting, wood finishing, waxing
+  * DO suggest: wood repair, filling cracks, refinishing
+  * Example good ideas: "Sand and stain dark walnut", "Paint chalk white", "Natural oil finish"\n`;
+    }
+
+    if (hasWood && hasFabric) {
+      materialGuidance += `- WOOD + FABRIC DETECTED: Mixed materials
+  * WOOD parts: suggest sanding, staining, painting wood frame/legs
+  * FABRIC parts: suggest reupholstering, cleaning, slipcovers
+  * Example good ideas: "Reupholster seat, paint frame", "New fabric + stained wood legs", "Clean upholstery, refresh wood trim"\n`;
+    }
+
+    if (hasMetal) {
+      materialGuidance += `- METAL DETECTED: This has metal components
+  * DO suggest: rust removal, metal primer, spray paint, powder coating
+  * DO NOT suggest: wood staining, wood finishing
+  * Example good ideas: "Remove rust and spray paint black", "Sand metal + apply rust converter", "Powder coat in modern color"\n`;
+    }
+
+    if (hasLeather) {
+      materialGuidance += `- LEATHER DETECTED: Leather surfaces present
+  * DO suggest: leather conditioner, leather repair, leather dye, leather cleaner
+  * DO NOT suggest: painting leather (unless leather paint specified), reupholstering (leather is premium)
+  * Example good ideas: "Condition and restore leather", "Leather dye to refresh color", "Professional leather repair"\n`;
+    }
+
     const prompt = isCreativeReuse
       ? `Generate 5 PRACTICAL restoration and repurposing ideas for this found object.
 
@@ -43,6 +91,7 @@ OBJECT DETAILS:
 - Materials: ${materials}
 - Condition: ${issues}
 - Safety concerns: ${safetyFlags}
+${materialGuidance}
 
 USER CONSTRAINTS:
 - Use case preference: ${constraints.useCase}
