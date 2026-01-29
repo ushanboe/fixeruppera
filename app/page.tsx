@@ -12,13 +12,16 @@ import IdeasList from "@/components/IdeasList";
 import PlanView from "@/components/PlanView";
 import ComparisonResults from "@/components/ComparisonResults";
 import SavedPlans from "@/components/SavedPlans";
+import BottomNav from "@/components/BottomNav";
 
 type AppMode = "standard" | "pro" | "creative-reuse";
-type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison" | "saved";
+type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison" | "saved" | "settings";
+type BottomNavView = "home" | "saved" | "settings";
 
 export default function Home() {
   const [appMode, setAppMode] = useState<AppMode | null>(null);
   const [currentStep, setCurrentStep] = useState<AppStep>("mode");
+  const [bottomNavView, setBottomNavView] = useState<BottomNavView>("home");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [targetImage, setTargetImage] = useState<string | null>(null);
   const [identificationData, setIdentificationData] = useState<any>(null);
@@ -142,23 +145,35 @@ export default function Home() {
     setSelectedIdea(null);
     setComparisonData(null);
     setCurrentStep("mode");
+    setBottomNavView("home");
+  };
+
+  const handleBottomNavChange = (view: BottomNavView) => {
+    setBottomNavView(view);
+    if (view === "home") {
+      handleReset();
+    } else if (view === "saved") {
+      setCurrentStep("saved");
+    } else if (view === "settings") {
+      setCurrentStep("settings");
+    }
   };
 
   return (
-    <main className="min-h-screen min-h-dvh bg-gray-50">
+    <main className="min-h-screen min-h-dvh bg-black pb-20">
       {/* Header */}
-      <header className="safe-header bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <header className="safe-header bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-md">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">FixerUppera</h1>
+            <h1 className="text-xl font-bold text-white">FixerUppera</h1>
           </div>
-          {currentStep !== "mode" && (
+          {currentStep !== "mode" && currentStep !== "saved" && currentStep !== "settings" && (
             <button
               onClick={handleReset}
-              className="text-sm font-semibold text-purple-600 hover:text-purple-700 transition-colors"
+              className="text-sm font-semibold text-purple-400 hover:text-purple-300 transition-colors"
             >
               Start Over
             </button>
@@ -168,48 +183,48 @@ export default function Home() {
 
       {/* Progress Indicator - Standard Mode Only */}
       {appMode === "standard" && currentStep !== "upload" && currentStep !== "identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 bg-gray-900">
           <div className="flex items-center gap-2">
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-purple-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-purple-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-purple-500" : "bg-gray-700"}`} />
           </div>
         </div>
       )}
 
       {/* Progress Indicator - Pro Mode */}
       {appMode === "pro" && currentStep !== "mode" && currentStep !== "upload" && currentStep !== "pro-identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 bg-gray-900">
           <div className="flex items-center gap-2">
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "pro-comparison" ? "bg-green-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "pro-comparison"].includes(currentStep) ? "bg-green-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "pro-comparison" ? "bg-green-500" : "bg-gray-700"}`} />
           </div>
         </div>
       )}
 
       {/* Progress Indicator - Creative Reuse Mode */}
       {appMode === "creative-reuse" && currentStep !== "upload" && currentStep !== "identification" && (
-        <div className="max-w-2xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-4 py-3 bg-gray-900">
           <div className="flex items-center gap-2">
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-orange-500" : "bg-gray-200"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["constraints", "analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["analysis", "ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${["ideas", "plan"].includes(currentStep) ? "bg-orange-500" : "bg-gray-700"}`} />
+            <div className={`h-1.5 flex-1 rounded-full transition-colors ${currentStep === "plan" ? "bg-orange-500" : "bg-gray-700"}`} />
           </div>
         </div>
       )}
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-8 safe-bottom pb-12">
+      <div className="max-w-2xl mx-auto px-4 py-8">
         {currentStep === "mode" && (
           <div className="animate-fade-in space-y-8">
             <div className="text-center space-y-2 px-4">
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
                 Transform your Finds
               </h2>
-              <p className="text-xl font-semibold text-purple-600">
+              <p className="text-xl font-semibold text-purple-400">
                 Fix it, don't ditch it!
               </p>
             </div>
@@ -217,66 +232,52 @@ export default function Home() {
             <div className="space-y-3">
               <button
                 onClick={() => handleModeSelect("standard")}
-                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-purple-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
+                className="btn w-full bg-gray-900 border-2 border-purple-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-purple-900/50 active:scale-98 transition-all group"
               >
-                <div className="flex items-center gap-5 p-5">
-                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                    <Zap className="w-7 h-7 text-white" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-6">
+                  <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 group-hover:scale-110 transition-all flex-shrink-0">
+                    <Zap className="w-8 h-8 text-purple-400" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-lg font-bold text-gray-900 mb-0.5">Standard Mode</div>
-                    <div className="text-sm text-gray-600">Take a photo and get AI-generated makeover ideas</div>
+                    <div className="text-xl font-bold text-white mb-1">Standard Mode</div>
+                    <div className="text-sm text-gray-400">Take a photo and get AI-generated makeover ideas</div>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => handleModeSelect("pro")}
-                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-green-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
+                className="btn w-full bg-gray-900 border-2 border-green-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-green-900/50 active:scale-98 transition-all group"
               >
-                <div className="flex items-center gap-5 p-5">
-                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                    <Target className="w-7 h-7 text-white" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-6">
+                  <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center group-hover:bg-green-500/30 group-hover:scale-110 transition-all flex-shrink-0">
+                    <Target className="w-8 h-8 text-green-400" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-lg font-bold text-gray-900 mb-0.5 flex items-center gap-2">
+                    <div className="text-xl font-bold text-white mb-1 flex items-center gap-2">
                       Pro Mode
                       <span className="px-2 py-0.5 bg-green-500 text-white text-xs font-bold rounded-md">NEW</span>
                     </div>
-                    <div className="text-sm text-gray-600">Upload before + target photos to match a specific look</div>
+                    <div className="text-sm text-gray-400">Upload before + target photos to match a specific look</div>
                   </div>
                 </div>
               </button>
 
               <button
                 onClick={() => handleModeSelect("creative-reuse")}
-                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-orange-300 hover:shadow-lg active:scale-98 transition-all group shadow-sm"
+                className="btn w-full bg-gray-900 border-2 border-orange-500 rounded-3xl hover:bg-gray-800 hover:shadow-2xl hover:shadow-orange-900/50 active:scale-98 transition-all group"
               >
-                <div className="flex items-center gap-5 p-5">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                    <Recycle className="w-7 h-7 text-white" strokeWidth={2.5} />
+                <div className="flex items-center gap-5 p-6">
+                  <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center group-hover:bg-orange-500/30 group-hover:scale-110 transition-all flex-shrink-0">
+                    <Recycle className="w-8 h-8 text-orange-400" strokeWidth={2.5} />
                   </div>
                   <div className="text-left flex-1">
-                    <div className="text-lg font-bold text-gray-900 mb-0.5">Creative Reuse</div>
-                    <div className="text-sm text-gray-600">Turn found objects into something useful</div>
+                    <div className="text-xl font-bold text-white mb-1">Creative Reuse</div>
+                    <div className="text-sm text-gray-400">Turn found objects into something useful</div>
                   </div>
                 </div>
               </button>
             </div>
-
-            {/* Saved Plans Button */}
-            <div className="pt-4 border-t border-gray-200">
-              <button
-                onClick={() => setCurrentStep("saved")}
-                className="btn w-full bg-white border border-gray-200 rounded-2xl hover:border-gray-300 hover:shadow-md active:scale-98 transition-all group shadow-sm"
-              >
-                <div className="flex items-center gap-5 p-4">
-                  <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-gray-200 transition-colors flex-shrink-0">
-                    <Bookmark className="w-6 h-6 text-gray-600" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left flex-1">
-                    <div className="text-base font-bold text-gray-900 mb-0.5">Saved Plans</div>
-                    <div className="text-sm text-gray-600">View your saved projects</div>
                   </div>
                 </div>
               </button>
@@ -425,7 +426,25 @@ export default function Home() {
             />
           </div>
         )}
+
+        {currentStep === "settings" && (
+          <div className="animate-fade-in">
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h2 className="text-2xl font-bold text-white mb-4">Settings</h2>
+              <p className="text-gray-400 mb-4">Version 11.0</p>
+              <div className="text-sm text-gray-500">
+                Settings and preferences coming soon...
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav
+        currentView={bottomNavView}
+        onNavigate={handleBottomNavChange}
+      />
     </main>
   );
 }
