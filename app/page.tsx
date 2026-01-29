@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Upload, Sparkles, Zap, Target, Recycle } from "lucide-react";
+import { Camera, Upload, Sparkles, Zap, Target, Recycle, Bookmark } from "lucide-react";
 import PhotoCapture from "@/components/PhotoCapture";
 import DualPhotoCapture from "@/components/DualPhotoCapture";
 import IdentificationResults from "@/components/IdentificationResults";
@@ -11,9 +11,10 @@ import AnalysisResults from "@/components/AnalysisResults";
 import IdeasList from "@/components/IdeasList";
 import PlanView from "@/components/PlanView";
 import ComparisonResults from "@/components/ComparisonResults";
+import SavedPlans from "@/components/SavedPlans";
 
 type AppMode = "standard" | "pro" | "creative-reuse";
-type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison";
+type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison" | "saved";
 
 export default function Home() {
   const [appMode, setAppMode] = useState<AppMode | null>(null);
@@ -262,7 +263,29 @@ export default function Home() {
                 </div>
               </button>
             </div>
+
+            {/* Saved Plans Button */}
+            <div className="pt-6 border-t border-gray-800">
+              <button
+                onClick={() => setCurrentStep("saved")}
+                className="btn w-full bg-gray-900 border-2 border-gray-700 rounded-3xl hover:bg-gray-800 hover:border-gray-600 hover:shadow-xl active:scale-98 transition-all group"
+              >
+                <div className="flex items-center gap-6 px-6 py-6">
+                  <div className="w-12 h-12 bg-gray-700/30 rounded-full flex items-center justify-center group-hover:bg-gray-700/50 transition-all flex-shrink-0">
+                    <Bookmark className="w-6 h-6 text-gray-400 group-hover:text-gray-300" strokeWidth={2.5} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-lg font-bold text-white mb-1">Saved Plans</div>
+                    <div className="text-sm text-gray-400">View your saved projects</div>
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
+        )}
+
+        {currentStep === "saved" && (
+          <SavedPlans onBack={handleReset} />
         )}
 
         {currentStep === "upload" && appMode === "standard" && (

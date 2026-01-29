@@ -161,6 +161,42 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
   };
 
   const handleSave = () => {
+    try {
+      // Get existing saved plans from localStorage
+      const savedPlansJson = localStorage.getItem('fixeruppera_saved_plans');
+      const savedPlans = savedPlansJson ? JSON.parse(savedPlansJson) : [];
+
+      // Create new saved plan object
+      const savedPlan = {
+        id: `plan-${Date.now()}`,
+        savedAt: new Date().toISOString(),
+        plan,
+        idea,
+        analysis,
+        constraints,
+        beforeImage,
+        completedSteps: Array.from(completedSteps),
+      };
+
+      // Add to saved plans array
+      savedPlans.unshift(savedPlan); // Add to beginning
+
+      // Limit to 20 saved plans
+      if (savedPlans.length > 20) {
+        savedPlans.pop();
+      }
+
+      // Save back to localStorage
+      localStorage.setItem('fixeruppera_saved_plans', JSON.stringify(savedPlans));
+
+      alert('Plan saved! View it in Saved Plans.');
+    } catch (error) {
+      console.error('Failed to save plan:', error);
+      alert('Failed to save plan. Storage may be full.');
+    }
+  };
+
+  const handleExport = () => {
     const itemType = analysis.objectCandidates?.[0]?.label || "furniture item";
     const materials = analysis.materials?.map((m: any) => m.label).join(", ") || "unknown materials";
 
@@ -433,9 +469,9 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
           <p className="text-gray-600">{idea.title}</p>
         </div>
         <button
-          onClick={handleSave}
+          onClick={handleExport}
           className="btn w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 hover:bg-purple-200 transition-colors"
-          title="Save plan"
+          title="Export as HTML"
         >
           <Download className="w-5 h-5 text-purple-600" />
         </button>
@@ -588,20 +624,29 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
           Created by FixerUppera App 🌟
         </div>
         <p className="text-sm text-purple-700">Transform your furniture finds!</p>
-        <div className="mt-4 flex items-center justify-center gap-3">
+        <div className="mt-4 flex flex-col items-center justify-center gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Save to App
+            </button>
+            <button
+              onClick={handleShare}
+              className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <Share2 className="w-5 h-5" />
+              Share
+            </button>
+          </div>
           <button
-            onClick={handleSave}
-            className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
+            onClick={handleExport}
+            className="btn text-sm text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-2"
           >
-            <Download className="w-5 h-5" />
-            Save Plan
-          </button>
-          <button
-            onClick={handleShare}
-            className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
-          >
-            <Share2 className="w-5 h-5" />
-            Share Plan
+            <Download className="w-4 h-4" />
+            Export as HTML file
           </button>
         </div>
       </div>
