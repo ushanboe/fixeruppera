@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const isCreativeReuse = !!constraints.useCase;
 
     const prompt = isCreativeReuse
-      ? `Generate 5 GENUINELY DIFFERENT creative repurposing ideas for this found object.
+      ? `Generate 5 PRACTICAL restoration and repurposing ideas for this found object.
 
 OBJECT DETAILS:
 - Current item: ${itemType}
@@ -52,42 +52,49 @@ USER CONSTRAINTS:
 - Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
 - Time: ${constraints.timeBand}
 
-CRITICAL DIVERSITY REQUIREMENTS:
-1. Each idea MUST be in a DIFFERENT CATEGORY (functional/decorative/storage/outdoor/gift)
-2. NO MORE than 1 idea per category - spread across categories
-3. At least one "beginner" difficulty and one "intermediate/advanced" difficulty
-4. Consider UNEXPECTED uses based on shape, material, and size
-5. Balance creativity with practicality - ideas must be achievable
-6. Use Australian context (climate, products available at Bunnings, lifestyle)
-7. Consider the actual materials and dimensions when suggesting transformations
+CRITICAL PRACTICALITY REQUIREMENTS:
+1. PRESERVE the object's basic form - if it's a table, keep it as a table; if it's a chair, keep it as a chair
+2. Focus PRIMARILY on restoration/refinishing ideas (3-4 ideas should maintain current purpose)
+3. Only 1-2 ideas can suggest a NEW purpose, and these MUST be practical and simple
+4. DO NOT suggest major reconstruction (no "turn table into wall shelf" or "convert to bench")
+5. DO NOT suggest disassembly or cutting down the main structure
+6. Focus on surface treatments, repairs, and styling changes
+7. Use Australian context (Bunnings products, climate, lifestyle)
+8. Match user's skill level - don't suggest complex joinery for beginners
 
-EXAMPLE DIVERSITY (for old wooden ladder):
-- Idea 1: Vertical herb garden (functional/outdoor)
-- Idea 2: Rustic bookshelf (decorative/indoor)
-- Idea 3: Bathroom towel rack (functional/bathroom)
-- Idea 4: Photo/art display wall (decorative/wall)
-- Idea 5: Kitchen pot rack (storage/kitchen)
+GOOD EXAMPLES (for old wooden side table):
+- Idea 1: Rustic farmhouse side table (sand down, dark walnut stain, seal) [REFINISH - same purpose]
+- Idea 2: Modern painted accent table (clean, sage green paint, new knobs) [REFINISH - same purpose]
+- Idea 3: Vintage shabby chic table (chalk paint, distress, clear wax) [REFINISH - same purpose]
+- Idea 4: Outdoor patio side table (repair, outdoor stain, weatherproof seal) [REPURPOSE - slight change]
+- Idea 5: Entryway console table (restore, add hooks underneath, paint) [REPURPOSE - slight change]
 
-Notice: 5 completely different categories, different rooms, different purposes!
+Notice: All respect the TABLE form. Most are refinishing. Only 2 suggest new locations/uses, but structure stays intact!
+
+BAD EXAMPLES (too dramatic - DO NOT DO THIS):
+- ❌ Transform into storage bench (requires cutting legs, major reconstruction)
+- ❌ Create wall shelf (requires complete disassembly)
+- ❌ Garden tool organizer (doesn't respect object's form)
+- ❌ Turn into gift box (major reconstruction)
 
 Provide response as JSON:
 {
   "ideas": [
     {
       "id": "unique-slug",
-      "title": "Specific descriptive title showing the transformation",
+      "title": "Specific descriptive title (e.g., 'Rustic Farmhouse Side Table')",
       "category": "functional|decorative|storage|outdoor|gift",
-      "whyItWorks": "Why this repurposing makes sense given object's characteristics",
+      "whyItWorks": "Brief explanation focusing on preserving the object's core purpose",
       "difficulty": "beginner|intermediate|advanced",
       "timeEstimate": {"minHours": number, "maxHours": number},
       "costEstimate": {"min": number, "max": number, "currency": "AUD"},
-      "keyTransformations": ["What changes", "What stays same", "What gets added"],
+      "keyTransformations": ["Surface finish changes", "Structure stays same", "Minor additions like hardware"],
       "stepsPreview": ["Step 1", "Step 2", "Step 3"]
     }
   ]
 }
 
-Generate 5 diverse ideas - remember, each in a DIFFERENT category!`
+Generate 5 practical ideas - prioritize refinishing over reconstruction!`
       : `Generate 4-5 realistic upcycling ideas for this furniture item.
 
 ITEM DETAILS:
@@ -139,7 +146,7 @@ Generate 4-5 ideas that are appropriate for this specific item and user's constr
       ],
       response_format: { type: "json_object" },
       max_tokens: 2000,
-      temperature: 0.7,
+      temperature: isCreativeReuse ? 0.5 : 0.7, // Lower temperature for Creative Reuse = more conservative
     });
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
