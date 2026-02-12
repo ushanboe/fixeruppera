@@ -524,8 +524,8 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
           <ChevronLeft className="w-5 h-5 text-gray-600" />
         </button>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">{plan.title}</h2>
-          <p className="text-gray-600">{idea.title}</p>
+          <h2 className="text-2xl font-bold text-white mb-1">{plan.title}</h2>
+          <p className="text-gray-400">{idea.title}</p>
         </div>
       </div>
 
@@ -567,10 +567,10 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
             {plan.timeEstimate?.minHours}-{plan.timeEstimate?.maxHours}h
           </div>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+        <div className="bg-white rounded-xl p-3 border border-gray-200 text-center">
           <DollarSign className="w-5 h-5 text-green-600 mx-auto mb-1" />
           <div className="text-xs text-gray-600 mb-1">Cost</div>
-          <div className="font-bold text-gray-900">
+          <div className="font-bold text-gray-900 text-sm whitespace-nowrap">
             ${plan.costEstimate?.min}-${plan.costEstimate?.max}
           </div>
         </div>
@@ -590,7 +590,7 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
           <div className="flex items-center justify-center gap-3">
             <Sparkles className="w-6 h-6" />
             <div className="text-left">
-              <div className="text-lg font-bold">See the Makeover</div>
+              <div className="text-lg font-bold">Generate Your Ideas with AI</div>
               <div className="text-sm text-purple-200">AI-generated preview of your transformation</div>
             </div>
           </div>
@@ -660,13 +660,14 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
           className="btn w-full flex items-center justify-between p-6"
         >
           <h3 className="font-bold text-gray-900 flex items-center gap-2">
-            📋 Step-by-Step Instructions
+            <CheckCircle2 className="w-5 h-5 text-purple-600" />
+            Instructions
             <span className="text-sm font-normal text-gray-500">
               ({plan.steps?.length || 0} steps)
             </span>
           </h3>
           <ChevronDown
-            className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+            className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
               instructionsOpen ? "rotate-180" : ""
             }`}
           />
