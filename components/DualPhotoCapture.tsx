@@ -328,7 +328,7 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
                 </div>
                 <div className="text-left">
                   <div className="text-base font-bold text-white">Browse Pinterest</div>
-                  <div className="text-xs text-gray-400">Find inspiration, save, then upload here</div>
+                  <div className="text-xs text-gray-400">Tap image → ··· → Download, then upload here</div>
                 </div>
               </div>
             </a>
