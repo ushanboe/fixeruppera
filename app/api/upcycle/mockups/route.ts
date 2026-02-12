@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
       " Take a more subtle, minimalist approach to this transformation.",
     ];
 
-    // Generate all mockups in parallel to stay under Vercel's 60s timeout
+    // Generate all mockups in parallel with per-call timeout to stay under Vercel's 60s limit
+    const CALL_TIMEOUT = 50_000; // 50s per call — leaves headroom before Vercel's 60s kill
+
     const generateOne = async (i: number) => {
       const instruction = baseInstruction + (variationHints[i] || "");
       console.log(`Generating mockup ${i + 1}/${count} with Qwen-Image-Edit...`);
@@ -48,10 +50,14 @@ export async function POST(request: NextRequest) {
             { text: instruction },
           ];
 
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), CALL_TIMEOUT);
+
       const response = await fetch(
         "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
         {
           method: "POST",
+          signal: controller.signal,
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
@@ -73,6 +79,8 @@ export async function POST(request: NextRequest) {
           }),
         }
       );
+
+      clearTimeout(timer);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -97,6 +105,13 @@ export async function POST(request: NextRequest) {
 
     const indices = Array.from({ length: Math.min(count, 4) }, (_, i) => i);
     const results = await Promise.allSettled(indices.map((i) => generateOne(i)));
+
+    // Log any rejected promises (timeouts or errors)
+    results.forEach((r, i) => {
+      if (r.status === "rejected") {
+        console.error(`Mockup ${i + 1} failed:`, r.reason?.message || r.reason);
+      }
+    });
 
     const mockups = results
       .filter((r): r is PromiseFulfilledResult<{ id: string; imageUrl: string } | null> => r.status === "fulfilled")

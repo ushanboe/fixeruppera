@@ -1,17 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Camera, Upload, X, Check } from "lucide-react";
 
 interface DualPhotoCaptureProps {
   onCapture: (beforeImage: string, targetImage: string) => void;
 }
 
+type CameraTarget = "before" | "target" | null;
+
 export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
   const [beforeImage, setBeforeImage] = useState<string | null>(null);
   const [targetImage, setTargetImage] = useState<string | null>(null);
+  const [cameraTarget, setCameraTarget] = useState<CameraTarget>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const processImage = async (file: File): Promise<string> => {
     return new Promise((resolve) => {
@@ -50,21 +55,69 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
     });
   };
 
-  const handleBeforeSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    target: "before" | "target"
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const dataUrl = await processImage(file);
-      setBeforeImage(dataUrl);
+      if (target === "before") {
+        setBeforeImage(dataUrl);
+      } else {
+        setTargetImage(dataUrl);
+      }
     }
   };
 
-  const handleTargetSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const dataUrl = await processImage(file);
-      setTargetImage(dataUrl);
+  const startCamera = useCallback(async (target: "before" | "target") => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
+      setStream(mediaStream);
+      setCameraTarget(target);
+
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (error) {
+      console.error("Camera access denied:", error);
+      alert("Camera access is required to take photos. Please grant permission or use file upload.");
     }
-  };
+  }, []);
+
+  const capturePhoto = useCallback(() => {
+    if (videoRef.current && cameraTarget) {
+      const canvas = document.createElement("canvas");
+      const video = videoRef.current;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(video, 0, 0);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+      if (cameraTarget === "before") {
+        setBeforeImage(dataUrl);
+      } else {
+        setTargetImage(dataUrl);
+      }
+
+      stopCamera();
+    }
+  }, [cameraTarget]);
+
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    setCameraTarget(null);
+  }, [stream]);
 
   const handleContinue = () => {
     if (beforeImage && targetImage) {
@@ -85,6 +138,42 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
       targetInputRef.current.value = "";
     }
   };
+
+  // Camera overlay — shared for both before and target
+  if (cameraTarget) {
+    return (
+      <div className="relative bg-black rounded-3xl overflow-hidden aspect-[3/4] max-h-[70vh] shadow-2xl">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+        />
+        {/* Label which photo we're capturing */}
+        <div className="absolute top-4 left-4 bg-black/60 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+          {cameraTarget === "before" ? "Before Photo" : "Target Inspiration"}
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+          <div className="flex items-center justify-center gap-6">
+            <button
+              onClick={stopCamera}
+              className="btn w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white/30 transition-all active:scale-95"
+            >
+              <X className="w-7 h-7 text-white" />
+            </button>
+            <button
+              onClick={capturePhoto}
+              className="btn w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl"
+            >
+              <div className="w-20 h-20 border-4 border-black rounded-full" />
+            </button>
+            <div className="w-16" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,24 +204,41 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
               ref={beforeInputRef}
               type="file"
               accept="image/*"
-              onChange={handleBeforeSelect}
+              onChange={(e) => handleFileSelect(e, "before")}
               className="hidden"
               aria-label="Upload before photo"
             />
-            <button
-              onClick={() => beforeInputRef.current?.click()}
-              className="btn w-full bg-gray-900 border-2 border-gray-700 rounded-3xl hover:bg-gray-800 hover:border-green-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
-            >
-              <div className="flex flex-col items-center gap-5 py-10">
-                <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
-                  <Upload className="w-10 h-10 text-gray-400 group-hover:text-green-400" strokeWidth={2.5} />
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => startCamera("before")}
+                className="btn bg-gray-900 border-2 border-purple-500 rounded-2xl hover:bg-gray-800 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
+              >
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="w-14 h-14 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 group-hover:scale-110 transition-all">
+                    <Camera className="w-7 h-7 text-purple-400" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-white mb-0.5">Take Photo</div>
+                    <div className="text-xs text-gray-400">Use camera</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xl font-bold text-white mb-1">Upload Your Item</div>
-                  <div className="text-sm text-gray-400">Current state of your furniture</div>
+              </button>
+              <button
+                onClick={() => beforeInputRef.current?.click()}
+                className="btn bg-gray-900 border-2 border-gray-700 rounded-2xl hover:bg-gray-800 hover:border-green-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
+              >
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="w-14 h-14 bg-gray-800 rounded-full flex items-center justify-center group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
+                    <Upload className="w-7 h-7 text-gray-400 group-hover:text-green-400" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-white mb-0.5">Upload</div>
+                    <div className="text-xs text-gray-400">From gallery</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 text-center">Current state of your furniture</p>
           </>
         )}
       </div>
@@ -164,25 +270,41 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
               ref={targetInputRef}
               type="file"
               accept="image/*"
-              onChange={handleTargetSelect}
+              onChange={(e) => handleFileSelect(e, "target")}
               className="hidden"
               aria-label="Upload target inspiration photo"
             />
-            <button
-              onClick={() => targetInputRef.current?.click()}
-              className="btn w-full bg-gray-900 border-2 border-gray-700 rounded-3xl hover:bg-gray-800 hover:border-green-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
-              disabled={!beforeImage}
-            >
-              <div className="flex flex-col items-center gap-5 py-10">
-                <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
-                  <Upload className="w-10 h-10 text-gray-400 group-hover:text-green-400" strokeWidth={2.5} />
+            <div className={`grid grid-cols-2 gap-3 ${!beforeImage ? "opacity-40 pointer-events-none" : ""}`}>
+              <button
+                onClick={() => startCamera("target")}
+                className="btn bg-gray-900 border-2 border-purple-500 rounded-2xl hover:bg-gray-800 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
+              >
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="w-14 h-14 bg-purple-500/20 rounded-full flex items-center justify-center group-hover:bg-purple-500/30 group-hover:scale-110 transition-all">
+                    <Camera className="w-7 h-7 text-purple-400" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-white mb-0.5">Take Photo</div>
+                    <div className="text-xs text-gray-400">Use camera</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xl font-bold text-white mb-1">Upload Inspiration</div>
-                  <div className="text-sm text-gray-400">Pinterest, marketplace, or any style you like</div>
+              </button>
+              <button
+                onClick={() => targetInputRef.current?.click()}
+                className="btn bg-gray-900 border-2 border-gray-700 rounded-2xl hover:bg-gray-800 hover:border-green-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden"
+              >
+                <div className="flex flex-col items-center gap-3 py-6">
+                  <div className="w-14 h-14 bg-gray-800 rounded-full flex items-center justify-center group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
+                    <Upload className="w-7 h-7 text-gray-400 group-hover:text-green-400" strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-white mb-0.5">Upload</div>
+                    <div className="text-xs text-gray-400">From gallery</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 text-center">Pinterest, marketplace, or any style you like</p>
           </>
         )}
       </div>
