@@ -32,77 +32,76 @@ export async function POST(request: NextRequest) {
       " Take a more subtle, minimalist approach to this transformation.",
     ];
 
-    const mockups = [];
+    // Generate all mockups in parallel to stay under Vercel's 60s timeout
+    const generateOne = async (i: number) => {
+      const instruction = baseInstruction + (variationHints[i] || "");
+      console.log(`Generating mockup ${i + 1}/${count} with Qwen-Image-Edit...`);
 
-    for (let i = 0; i < Math.min(count, 4); i++) {
-      try {
-        const instruction = baseInstruction + (variationHints[i] || "");
-        console.log(`Generating mockup ${i + 1}/${count} with Qwen-Image-Edit...`);
+      const content = targetImage
+        ? [
+            { image: beforeImage },
+            { image: targetImage },
+            { text: instruction },
+          ]
+        : [
+            { image: beforeImage },
+            { text: instruction },
+          ];
 
-        // Build content array: single image for Standard, dual image for Pro
-        const content = targetImage
-          ? [
-              { image: beforeImage },
-              { image: targetImage },
-              { text: instruction },
-            ]
-          : [
-              { image: beforeImage },
-              { text: instruction },
-            ];
-
-        const response = await fetch(
-          "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
+      const response = await fetch(
+        "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "qwen-image-edit-max",
+            input: {
+              messages: [
+                {
+                  role: "user",
+                  content,
+                },
+              ],
             },
-            body: JSON.stringify({
-              model: "qwen-image-edit-max",
-              input: {
-                messages: [
-                  {
-                    role: "user",
-                    content,
-                  },
-                ],
-              },
-              parameters: {
-                n: 1,
-                size: "1024*1024",
-              },
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Qwen API error (${response.status}):`, errorText);
-          throw new Error(`Qwen API error: ${response.status} - ${errorText}`);
+            parameters: {
+              n: 1,
+              size: "1024*1024",
+            },
+          }),
         }
+      );
 
-        const result = await response.json();
-        console.log(`Mockup ${i + 1} response received`);
-
-        // Extract image URL from Qwen response format
-        const imageUrl =
-          result.output?.choices?.[0]?.message?.content?.[0]?.image;
-
-        if (imageUrl) {
-          mockups.push({
-            id: `mockup-${i + 1}`,
-            imageUrl,
-          });
-          console.log(`Successfully generated mockup ${i + 1}`);
-        } else {
-          console.error(`No image URL in response for mockup ${i + 1}:`, JSON.stringify(result));
-        }
-      } catch (error: any) {
-        console.error(`Error generating mockup ${i + 1}:`, error.message);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Qwen API error (${response.status}):`, errorText);
+        throw new Error(`Qwen API error: ${response.status} - ${errorText}`);
       }
-    }
+
+      const result = await response.json();
+      console.log(`Mockup ${i + 1} response received`);
+
+      const imageUrl =
+        result.output?.choices?.[0]?.message?.content?.[0]?.image;
+
+      if (imageUrl) {
+        console.log(`Successfully generated mockup ${i + 1}`);
+        return { id: `mockup-${i + 1}`, imageUrl };
+      } else {
+        console.error(`No image URL in response for mockup ${i + 1}:`, JSON.stringify(result));
+        return null;
+      }
+    };
+
+    const indices = Array.from({ length: Math.min(count, 4) }, (_, i) => i);
+    const results = await Promise.allSettled(indices.map((i) => generateOne(i)));
+
+    const mockups = results
+      .filter((r): r is PromiseFulfilledResult<{ id: string; imageUrl: string } | null> => r.status === "fulfilled")
+      .map((r) => r.value)
+      .filter((m): m is { id: string; imageUrl: string } => m !== null);
 
     console.log(`=== Generated ${mockups.length}/${count} mockups with Qwen ===`);
 
