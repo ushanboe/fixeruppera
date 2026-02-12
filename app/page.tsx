@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Camera, Upload, Sparkles, Zap, Target, Recycle, Bookmark } from "lucide-react";
 import PhotoCapture from "@/components/PhotoCapture";
 import DualPhotoCapture from "@/components/DualPhotoCapture";
@@ -13,14 +13,16 @@ import PlanView from "@/components/PlanView";
 import ComparisonResults from "@/components/ComparisonResults";
 import SavedPlans from "@/components/SavedPlans";
 import BottomNav from "@/components/BottomNav";
+import Onboarding, { type UserProfile } from "@/components/Onboarding";
 
 type AppMode = "standard" | "pro" | "creative-reuse";
-type AppStep = "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison" | "saved" | "settings";
+type AppStep = "onboarding" | "mode" | "upload" | "identification" | "pro-identification" | "constraints" | "analysis" | "ideas" | "plan" | "pro-comparison" | "saved" | "settings";
 type BottomNavView = "home" | "saved" | "settings";
 
 export default function Home() {
   const [appMode, setAppMode] = useState<AppMode | null>(null);
-  const [currentStep, setCurrentStep] = useState<AppStep>("mode");
+  const [currentStep, setCurrentStep] = useState<AppStep>("onboarding");
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [bottomNavView, setBottomNavView] = useState<BottomNavView>("home");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [targetImage, setTargetImage] = useState<string | null>(null);
@@ -29,6 +31,82 @@ export default function Home() {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [selectedIdea, setSelectedIdea] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>(null);
+  const [savedPlansKey, setSavedPlansKey] = useState<number>(0);
+
+  const handleReset = () => {
+    setAppMode(null);
+    setCapturedImage(null);
+    setTargetImage(null);
+    setIdentificationData(null);
+    setConstraints(null);
+    setAnalysisData(null);
+    setSelectedIdea(null);
+    setComparisonData(null);
+    setCurrentStep("mode");
+    setBottomNavView("home");
+  };
+
+  // Check onboarding status on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("fixeruppera_user_profile");
+    if (stored) {
+      try {
+        const profile = JSON.parse(stored) as UserProfile;
+        setUserProfile(profile);
+        setCurrentStep("mode");
+      } catch {
+        // Invalid data, show onboarding
+      }
+    }
+  }, []);
+
+  const handleOnboardingComplete = (profile: UserProfile) => {
+    setUserProfile(profile);
+    setCurrentStep("mode");
+  };
+
+  // Handle browser back button to prevent leaving the app
+  useEffect(() => {
+    // Push a dummy state when component mounts
+    window.history.pushState({ preventBack: true }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      // Prevent default back behavior and stay in the app
+      e.preventDefault();
+
+      // Navigate back within the app based on current step
+      if (currentStep === "plan") {
+        setCurrentStep("ideas");
+      } else if (currentStep === "ideas") {
+        setCurrentStep("constraints");
+      } else if (currentStep === "constraints") {
+        setCurrentStep(appMode === "pro" ? "pro-identification" : "identification");
+      } else if (currentStep === "identification" || currentStep === "pro-identification") {
+        setCurrentStep("upload");
+      } else if (currentStep === "upload") {
+        handleReset();
+      } else if (currentStep === "pro-comparison") {
+        setCurrentStep("constraints");
+      } else if (currentStep === "saved" || currentStep === "settings") {
+        handleReset();
+      } else if (currentStep === "onboarding") {
+        // Stay on onboarding
+        window.history.pushState({ preventBack: true }, '');
+      } else {
+        // Already at mode selection, stay there
+        window.history.pushState({ preventBack: true }, '');
+      }
+
+      // Push a new state to keep the back button intercepted
+      window.history.pushState({ preventBack: true }, '');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [currentStep, appMode]);
 
   const handleImageCapture = async (imageData: string) => {
     setCapturedImage(imageData);
@@ -45,10 +123,14 @@ export default function Home() {
 
     const data = await response.json();
     setIdentificationData(data);
+    // Scroll to bottom so "Looks Good" / Continue button is visible
+    setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
   };
 
   const handleIdentificationConfirm = () => {
     setCurrentStep("constraints");
+    // Scroll to top when entering constraints
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
 
   const handleConstraintsSubmit = async (constraintsData: any) => {
@@ -110,42 +192,40 @@ export default function Home() {
 
   const handleProIdentificationConfirm = () => {
     setCurrentStep("constraints");
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
 
   const handleProModeAnalysis = async (constraintsData: any) => {
     setConstraints(constraintsData);
     setCurrentStep("analysis");
 
-    // Call Pro Mode match-target API with identification data
-    const response = await fetch("/api/upcycle/match-target", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        images: [
-          { role: "before", dataUrl: capturedImage },
-          { role: "target", dataUrl: targetImage }
-        ],
-        identification: identificationData,
-        constraints: constraintsData,
-      }),
-    });
+    try {
+      // Call Pro Mode match-target API with identification data
+      const response = await fetch("/api/upcycle/match-target", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: [
+            { role: "before", dataUrl: capturedImage },
+            { role: "target", dataUrl: targetImage }
+          ],
+          identification: identificationData,
+          constraints: constraintsData,
+        }),
+      });
 
-    const data = await response.json();
-    setComparisonData(data);
-    setCurrentStep("pro-comparison");
-  };
+      if (!response.ok) {
+        console.error("Match-target API error:", response.status);
+      }
 
-  const handleReset = () => {
-    setAppMode(null);
-    setCapturedImage(null);
-    setTargetImage(null);
-    setIdentificationData(null);
-    setConstraints(null);
-    setAnalysisData(null);
-    setSelectedIdea(null);
-    setComparisonData(null);
-    setCurrentStep("mode");
-    setBottomNavView("home");
+      const data = await response.json();
+      setComparisonData(data);
+      setCurrentStep("pro-comparison");
+    } catch (error) {
+      console.error("Pro mode analysis failed:", error);
+      // Go back to constraints so user can retry
+      setCurrentStep("constraints");
+    }
   };
 
   const handleBottomNavChange = (view: BottomNavView) => {
@@ -154,6 +234,7 @@ export default function Home() {
       handleReset();
     } else if (view === "saved") {
       setCurrentStep("saved");
+      setSavedPlansKey(prev => prev + 1); // Force remount to reload data
     } else if (view === "settings") {
       setCurrentStep("settings");
     }
@@ -216,6 +297,11 @@ export default function Home() {
         </div>
       )}
 
+      {/* Onboarding */}
+      {currentStep === "onboarding" && (
+        <Onboarding onComplete={handleOnboardingComplete} />
+      )}
+
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-8">
         {currentStep === "mode" && (
@@ -225,7 +311,7 @@ export default function Home() {
                 Transform your Finds
               </h2>
               <p className="text-xl font-semibold text-purple-400">
-                Fix it, don't ditch it!
+                Fix it, don&apos;t ditch it!
               </p>
             </div>
 
@@ -278,15 +364,11 @@ export default function Home() {
                 </div>
               </button>
             </div>
-                  </div>
-                </div>
-              </button>
-            </div>
           </div>
         )}
 
         {currentStep === "saved" && (
-          <SavedPlans onBack={handleReset} />
+          <SavedPlans key={savedPlansKey} onBack={handleReset} />
         )}
 
         {currentStep === "upload" && appMode === "standard" && (
@@ -361,6 +443,7 @@ export default function Home() {
               onSubmit={handleConstraintsSubmit}
               onBack={() => setCurrentStep("upload")}
               mode="standard"
+              userProfile={userProfile}
             />
           </div>
         )}
@@ -372,6 +455,7 @@ export default function Home() {
               onSubmit={handleConstraintsSubmit}
               onBack={() => setCurrentStep("upload")}
               mode="creative-reuse"
+              userProfile={userProfile}
             />
           </div>
         )}
@@ -381,8 +465,9 @@ export default function Home() {
             <ConstraintsForm
               image={capturedImage!}
               onSubmit={handleProModeAnalysis}
-              onBack={() => setCurrentStep("upload")}
+              onBack={() => setCurrentStep("pro-identification")}
               mode="pro"
+              userProfile={userProfile}
             />
           </div>
         )}
@@ -399,6 +484,7 @@ export default function Home() {
               analysis={analysisData}
               constraints={constraints}
               onSelectIdea={handleIdeaSelect}
+              onBack={() => setCurrentStep("constraints")}
             />
           </div>
         )}

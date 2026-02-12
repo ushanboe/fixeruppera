@@ -1,7 +1,8 @@
 "use client";
 
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import Image from "next/image";
+import PandaLoading from "@/components/panda/PandaLoading";
 
 interface IdentificationResultsProps {
   image: string;
@@ -13,13 +14,11 @@ interface IdentificationResultsProps {
 export default function IdentificationResults({ image, data, onConfirm, onRetake }: IdentificationResultsProps) {
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-white mb-2">Identifying your item...</h3>
-        <p className="text-gray-400 text-center max-w-md">
-          Our AI is analyzing the photo to identify what you have
-        </p>
-      </div>
+      <PandaLoading
+        animation="walking"
+        title="Identifying your item..."
+        description="Our AI is analyzing the photo to identify what you have"
+      />
     );
   }
 
@@ -98,7 +97,7 @@ export default function IdentificationResults({ image, data, onConfirm, onRetake
             <div>
               <div className="text-yellow-500 font-bold mb-1">Uncertain Identification</div>
               <div className="text-gray-400 text-sm">
-                We're not completely sure what this is. You can still continue, but results may vary.
+                We&apos;re not completely sure what this is. You can still continue, but results may vary.
               </div>
             </div>
           </div>

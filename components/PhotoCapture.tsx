@@ -173,7 +173,6 @@ export default function PhotoCapture({ onCapture }: PhotoCaptureProps) {
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFileSelect}
         className="hidden"
         aria-label="Upload photo"

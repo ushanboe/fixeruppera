@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, TrendingUp, Clock, DollarSign, ChevronRight } from "lucide-react";
+import { TrendingUp, Clock, DollarSign, ChevronRight, ChevronLeft } from "lucide-react";
+import PandaLoading from "@/components/panda/PandaLoading";
 
 interface IdeasListProps {
   analysis: any;
   constraints: any;
   onSelectIdea: (idea: any) => void;
+  onBack?: () => void;
 }
 
-export default function IdeasList({ analysis, constraints, onSelectIdea }: IdeasListProps) {
+export default function IdeasList({ analysis, constraints, onSelectIdea, onBack }: IdeasListProps) {
   const [ideas, setIdeas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,13 +41,11 @@ export default function IdeasList({ analysis, constraints, onSelectIdea }: Ideas
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Generating ideas...</h3>
-        <p className="text-gray-600 text-center max-w-md">
-          Creating personalized makeover plans based on your preferences
-        </p>
-      </div>
+      <PandaLoading
+        animation="spinning"
+        title="Generating ideas..."
+        description="Creating personalized makeover plans based on your preferences"
+      />
     );
   }
 
@@ -65,8 +65,20 @@ export default function IdeasList({ analysis, constraints, onSelectIdea }: Ideas
   return (
     <div className="space-y-4 animate-slide-up">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Makeover Ideas</h2>
-        <p className="text-gray-600">Choose your favorite transformation</p>
+        <div className="flex items-start gap-4 mb-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="btn mt-2 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-white" />
+            </button>
+          )}
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Makeover Ideas</h2>
+            <p className="text-gray-600">Choose your favorite transformation</p>
+          </div>
+        </div>
       </div>
 
       {ideas.map((idea, index) => (

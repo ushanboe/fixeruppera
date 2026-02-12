@@ -31,7 +31,9 @@ export default function ComparisonResults({ beforeImage, targetImage, data, cons
         analysis={data}
         constraints={constraints}
         beforeImage={beforeImage}
+        targetImage={targetImage}
         onBack={() => setShowPlan(false)}
+        initialPlan={data.plan}
       />
     );
   }

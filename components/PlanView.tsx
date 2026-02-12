@@ -2,33 +2,57 @@
 
 import { useState, useEffect } from "react";
 import {
-  Loader2,
   ChevronLeft,
+  ChevronDown,
   ShoppingCart,
   AlertTriangle,
   Clock,
   DollarSign,
   CheckCircle2,
   Share2,
+  Save,
+  Sparkles,
+  X,
   Download,
+  Image as ImageIcon,
 } from "lucide-react";
+import MockupGallery from "./MockupGallery";
+import { imageToBase64 } from "@/lib/imageUtils";
+import PandaLoading from "@/components/panda/PandaLoading";
 
 interface PlanViewProps {
   idea: any;
   analysis: any;
   constraints: any;
   beforeImage?: string;
+  targetImage?: string;
   onBack: () => void;
+  initialPlan?: any;
+  initialCompletedSteps?: number[];
+  initialMockupImage?: string;
 }
 
-export default function PlanView({ idea, analysis, constraints, beforeImage, onBack }: PlanViewProps) {
+export default function PlanView({ idea, analysis, constraints, beforeImage, targetImage, onBack, initialPlan, initialCompletedSteps, initialMockupImage }: PlanViewProps) {
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
+    new Set(initialCompletedSteps || [])
+  );
+  const [showMockups, setShowMockups] = useState(false);
+  const [selectedMockupImage, setSelectedMockupImage] = useState<string | null>(
+    initialMockupImage || null
+  );
+  const [shoppingListOpen, setShoppingListOpen] = useState(false);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
 
   useEffect(() => {
-    // Check if this is Pro Mode (analysis contains a plan from match-target)
-    if (analysis?.plan) {
+    if (initialPlan) {
+      // Restored from saved plan — skip API call entirely
+      console.log("=== RESTORED: Using saved plan data ===");
+      setPlan(initialPlan);
+      setLoading(false);
+    } else if (analysis?.plan) {
+      // Pro Mode: analysis contains a plan from match-target
       console.log("=== PRO MODE: Using existing plan from match-target ===");
       setPlan(analysis.plan);
       setLoading(false);
@@ -129,6 +153,11 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
       content += `${plan.resale.note}\n\n`;
     }
 
+    // Mockup note
+    if (selectedMockupImage) {
+      content += `🎨 Includes AI-generated concept preview\n\n`;
+    }
+
     // Branding
     content += `━━━━━━━━━━━━━━━━━━━━━━\n`;
     content += `Created by FixerUppera App 🌟\n`;
@@ -160,26 +189,45 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
+      console.log('💾 Starting save process...');
+
+      // Compress before image to same size as mockup for consistent storage
+      let compressedBeforeImage = beforeImage;
+      if (beforeImage) {
+        try {
+          compressedBeforeImage = await imageToBase64(beforeImage, 512, 0.7);
+        } catch {
+          console.log('⚠️ Could not compress before image, using original');
+        }
+      }
+
       // Get existing saved plans from localStorage
       const savedPlansJson = localStorage.getItem('fixeruppera_saved_plans');
+      console.log('📦 Existing saved plans JSON:', savedPlansJson);
       const savedPlans = savedPlansJson ? JSON.parse(savedPlansJson) : [];
+      console.log('📊 Existing saved plans count:', savedPlans.length);
 
       // Create new saved plan object
       const savedPlan = {
         id: `plan-${Date.now()}`,
         savedAt: new Date().toISOString(),
+        version: 2,
         plan,
         idea,
         analysis,
         constraints,
-        beforeImage,
+        beforeImage: compressedBeforeImage,
         completedSteps: Array.from(completedSteps),
+        mockupImage: selectedMockupImage || undefined,
+        appMode: analysis?.plan ? "pro" : "standard",
       };
+      console.log('✨ New saved plan object:', savedPlan);
 
       // Add to saved plans array
       savedPlans.unshift(savedPlan); // Add to beginning
+      console.log('📈 Total plans after adding:', savedPlans.length);
 
       // Limit to 20 saved plans
       if (savedPlans.length > 20) {
@@ -188,10 +236,15 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
 
       // Save back to localStorage
       localStorage.setItem('fixeruppera_saved_plans', JSON.stringify(savedPlans));
+      console.log('✅ Saved to localStorage successfully');
+
+      // Verify it was saved
+      const verification = localStorage.getItem('fixeruppera_saved_plans');
+      console.log('🔍 Verification - data in localStorage:', verification);
 
       alert('Plan saved! View it in Saved Plans.');
     } catch (error) {
-      console.error('Failed to save plan:', error);
+      console.error('❌ Failed to save plan:', error);
       alert('Failed to save plan. Storage may be full.');
     }
   };
@@ -201,7 +254,7 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
     const materials = analysis.materials?.map((m: any) => m.label).join(", ") || "unknown materials";
 
     // Generate HTML content with embedded image
-    let html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -348,6 +401,14 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
 
   ${beforeImage ? `<img src="${beforeImage}" alt="Before photo" class="photo" />` : ''}
 
+  ${selectedMockupImage ? `
+  <div class="section">
+    <h2>🎨 Concept Preview</h2>
+    <img src="${selectedMockupImage}" alt="AI concept preview" class="photo" />
+    <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">AI-generated concept preview — actual results may vary.</p>
+  </div>
+  ` : ''}
+
   <div class="section">
     <h2>📦 Item Identified</h2>
     <p><strong>${itemType}</strong></p>
@@ -428,13 +489,11 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Creating your plan...</h3>
-        <p className="text-gray-600 text-center max-w-md">
-          Generating detailed steps and materials list
-        </p>
-      </div>
+      <PandaLoading
+        animation="walking"
+        title="Creating your plan..."
+        description="Generating detailed steps and materials list"
+      />
     );
   }
 
@@ -468,21 +527,18 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
           <h2 className="text-2xl font-bold text-gray-900 mb-1">{plan.title}</h2>
           <p className="text-gray-600">{idea.title}</p>
         </div>
-        <button
-          onClick={handleExport}
-          className="btn w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 hover:bg-purple-200 transition-colors"
-          title="Export as HTML"
-        >
-          <Download className="w-5 h-5 text-purple-600" />
-        </button>
-        <button
-          onClick={handleShare}
-          className="btn w-10 h-10 flex items-center justify-center rounded-full bg-purple-100 hover:bg-purple-200 transition-colors"
-          title="Share plan"
-        >
-          <Share2 className="w-5 h-5 text-purple-600" />
-        </button>
       </div>
+
+      {/* Before Photo */}
+      {beforeImage && (
+        <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
+          <img
+            src={beforeImage}
+            alt="Your item"
+            className="w-full h-auto max-h-64 object-cover"
+          />
+        </div>
+      )}
 
       {/* Progress Bar */}
       {completedSteps.size > 0 && (
@@ -525,69 +581,135 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
         </div>
       </div>
 
-      {/* Materials List */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
+      {/* Generate Mockup Button */}
+      {beforeImage && (
+        <button
+          onClick={() => setShowMockups(true)}
+          className="btn w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-2xl p-5 hover:from-purple-700 hover:to-purple-800 active:scale-98 transition-all shadow-lg"
+        >
+          <div className="flex items-center justify-center gap-3">
+            <Sparkles className="w-6 h-6" />
+            <div className="text-left">
+              <div className="text-lg font-bold">See the Makeover</div>
+              <div className="text-sm text-purple-200">AI-generated preview of your transformation</div>
+            </div>
+          </div>
+        </button>
+      )}
+
+      {/* Mockup Gallery Modal */}
+      {showMockups && beforeImage && (
+        <MockupGallery
+          beforeImage={beforeImage}
+          targetImage={targetImage}
+          concept={{
+            itemType: analysis?.objectCandidates?.[0]?.label || "furniture piece",
+            ideaTitle: idea?.title || plan?.title || "restored furniture",
+            keyTransformations: idea?.keyTransformations || plan?.keyTransformations || [],
+            stepsPreview: idea?.stepsPreview || plan?.steps?.map((s: any) => s.title || s) || [],
+            whyItWorks: idea?.whyItWorks || "",
+          }}
+          onClose={() => setShowMockups(false)}
+          onSelectMockup={(base64) => {
+            setSelectedMockupImage(base64);
+            setShowMockups(false);
+          }}
+        />
+      )}
+
+      {/* Materials List (Collapsible) */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <button
+          onClick={() => setShoppingListOpen(!shoppingListOpen)}
+          className="btn w-full flex items-center justify-between p-6"
+        >
           <h3 className="font-bold text-gray-900 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-purple-600" />
             Shopping List
+            <span className="text-sm font-normal text-gray-500">
+              ({plan.materials?.length || 0} items)
+            </span>
           </h3>
-        </div>
-        <div className="space-y-2">
-          {plan.materials?.map((material: any, index: number) => (
-            <div
-              key={index}
-              className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
-            >
-              <div className="flex-1">
-                <div className="font-medium text-gray-900">{material.item}</div>
-                <div className="text-sm text-gray-600">Quantity: {material.qty}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Steps */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <h3 className="font-bold text-gray-900 mb-4">Step-by-Step Instructions</h3>
-        <div className="space-y-3">
-          {plan.steps?.map((step: any) => (
-            <button
-              key={step.n}
-              onClick={() => toggleStep(step.n)}
-              className="btn w-full text-left"
-            >
+          <ChevronDown
+            className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+              shoppingListOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {shoppingListOpen && (
+          <div className="px-6 pb-6 space-y-2">
+            {plan.materials?.map((material: any, index: number) => (
               <div
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  completedSteps.has(step.n)
-                    ? "border-green-500 bg-green-50"
-                    : "border-gray-200 bg-white hover:border-purple-300"
-                }`}
+                key={index}
+                className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
               >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm ${
-                      completedSteps.has(step.n)
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {completedSteps.has(step.n) ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      step.n
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-gray-900 mb-1">{step.title}</h4>
-                    <p className="text-sm text-gray-600">{step.detail}</p>
-                  </div>
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{material.item}</div>
+                  <div className="text-sm text-gray-600">Quantity: {material.qty}</div>
                 </div>
               </div>
-            </button>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Steps (Collapsible) */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <button
+          onClick={() => setInstructionsOpen(!instructionsOpen)}
+          className="btn w-full flex items-center justify-between p-6"
+        >
+          <h3 className="font-bold text-gray-900 flex items-center gap-2">
+            📋 Step-by-Step Instructions
+            <span className="text-sm font-normal text-gray-500">
+              ({plan.steps?.length || 0} steps)
+            </span>
+          </h3>
+          <ChevronDown
+            className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+              instructionsOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+        {instructionsOpen && (
+          <div className="px-6 pb-6 space-y-3">
+            {plan.steps?.map((step: any) => (
+              <button
+                key={step.n}
+                onClick={() => toggleStep(step.n)}
+                className="btn w-full text-left"
+              >
+                <div
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    completedSteps.has(step.n)
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 bg-white hover:border-purple-300"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm ${
+                        completedSteps.has(step.n)
+                          ? "bg-green-500 text-white"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      {completedSteps.has(step.n) ? (
+                        <CheckCircle2 className="w-5 h-5" />
+                      ) : (
+                        step.n
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 mb-1">{step.title}</h4>
+                      <p className="text-sm text-gray-600">{step.detail}</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Safety Warnings */}
@@ -618,35 +740,56 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, onB
         </div>
       )}
 
-      {/* Branding Footer */}
-      <div className="bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200 rounded-xl p-6 text-center">
-        <div className="text-2xl font-bold text-purple-900 mb-2">
-          Created by FixerUppera App 🌟
-        </div>
-        <p className="text-sm text-purple-700">Transform your furniture finds!</p>
-        <div className="mt-4 flex flex-col items-center justify-center gap-3">
-          <div className="flex items-center gap-3">
+      {/* Selected Mockup Preview */}
+      {selectedMockupImage && (
+        <div className="bg-white rounded-xl p-4 border-2 border-purple-300">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-purple-600" />
+              Selected Concept Preview
+            </h3>
             <button
-              onClick={handleSave}
-              className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
+              onClick={() => setSelectedMockupImage(null)}
+              className="btn w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              title="Remove mockup"
             >
-              <CheckCircle2 className="w-5 h-5" />
-              Save to App
-            </button>
-            <button
-              onClick={handleShare}
-              className="btn px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition-colors flex items-center gap-2"
-            >
-              <Share2 className="w-5 h-5" />
-              Share
+              <X className="w-4 h-4 text-gray-500" />
             </button>
           </div>
+          <div className="rounded-lg overflow-hidden border border-purple-200">
+            <img
+              src={selectedMockupImage}
+              alt="Selected concept preview"
+              className="w-full h-auto"
+            />
+          </div>
+          <p className="text-xs text-gray-400 mt-2">This preview will be saved with your plan.</p>
+        </div>
+      )}
+
+      {/* Save & Share Actions */}
+      <div className="space-y-3">
+        <button
+          onClick={handleSave}
+          className="btn w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-lg transition-colors flex items-center justify-center gap-2"
+        >
+          <Save className="w-5 h-5" />
+          Save Plan
+        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleShare}
+            className="btn flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <Share2 className="w-4 h-4" />
+            Share
+          </button>
           <button
             onClick={handleExport}
-            className="btn text-sm text-purple-600 hover:text-purple-700 font-semibold flex items-center gap-2"
+            className="btn flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Export as HTML file
+            Export HTML
           </button>
         </div>
       </div>

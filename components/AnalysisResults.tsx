@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import PandaLoading from "@/components/panda/PandaLoading";
 
 interface AnalysisResultsProps {
   data: any;
@@ -9,13 +10,11 @@ interface AnalysisResultsProps {
 export default function AnalysisResults({ data }: AnalysisResultsProps) {
   if (!data) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-purple-600 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Analyzing your item...</h3>
-        <p className="text-gray-600 text-center max-w-md">
-          Our AI is identifying the material, condition, and potential of your furniture
-        </p>
-      </div>
+      <PandaLoading
+        animation="sadIdle"
+        title="Analyzing your item..."
+        description="Our AI is identifying the material, condition, and potential of your furniture"
+      />
     );
   }
 

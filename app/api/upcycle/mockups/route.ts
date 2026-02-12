@@ -1,60 +1,120 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-import sharp from "sharp";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Configuration - easy to switch providers
-const MOCKUP_PROVIDER = process.env.MOCKUP_PROVIDER || "stability"; // "stability" or "dalle"
-const IMAGE_STRENGTH = parseFloat(process.env.IMAGE_STRENGTH || "0.30"); // 0.25-0.35 recommended
-
-// Stability AI SDXL allowed dimensions [width, height, aspectRatio]
-const ALLOWED_DIMENSIONS = [
-  [1024, 1024, 1.0],      // Square
-  [1152, 896, 1.286],     // Landscape
-  [1216, 832, 1.462],     // Landscape
-  [1344, 768, 1.75],      // Landscape
-  [1536, 640, 2.4],       // Landscape
-  [640, 1536, 0.417],     // Portrait
-  [768, 1344, 0.571],     // Portrait
-  [832, 1216, 0.684],     // Portrait
-  [896, 1152, 0.777],     // Portrait
-] as const;
-
-function chooseClosestDimension(width: number, height: number): [number, number] {
-  const aspectRatio = width / height;
-
-  let closestDimension = ALLOWED_DIMENSIONS[0];
-  let smallestDiff = Math.abs(aspectRatio - ALLOWED_DIMENSIONS[0][2]);
-
-  for (const dimension of ALLOWED_DIMENSIONS) {
-    const diff = Math.abs(aspectRatio - dimension[2]);
-    if (diff < smallestDiff) {
-      smallestDiff = diff;
-      closestDimension = dimension;
-    }
-  }
-
-  return [closestDimension[0], closestDimension[1]];
-}
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { beforeImage, concept, count = 2 } = body;
+    const { beforeImage, targetImage, concept, count = 2 } = body;
 
-    console.log("=== MOCKUP GENERATION START ===");
-    console.log("Provider:", MOCKUP_PROVIDER);
-    console.log("Image Strength:", IMAGE_STRENGTH);
+    console.log("=== MOCKUP GENERATION START (Qwen-Image-Edit) ===");
+    console.log("Mode:", targetImage ? "Pro (dual-image)" : "Standard (single-image)");
     console.log("Concept:", JSON.stringify(concept, null, 2));
 
-    if (MOCKUP_PROVIDER === "stability") {
-      return await generateWithStability(beforeImage, concept, count);
-    } else {
-      return await generateWithDALLE(beforeImage, concept, count);
+    if (!process.env.DASHSCOPE_API_KEY) {
+      console.error("DASHSCOPE_API_KEY not configured");
+      return NextResponse.json(
+        { error: "Qwen-Image-Edit not configured. Please add DASHSCOPE_API_KEY to .env.local" },
+        { status: 500 }
+      );
     }
+
+    const baseInstruction = targetImage
+      ? buildDualImageInstruction(concept)
+      : buildEditInstruction(concept);
+    console.log("Base instruction:", baseInstruction);
+
+    // Variation hints to produce genuinely different mockups
+    const variationHints = [
+      "", // First mockup: use base instruction as-is
+      " Try a slightly different interpretation — vary the color tones, finish, or styling approach while keeping the same transformation concept.",
+      " Explore a bolder creative direction — different color palette or accent details while achieving the same transformation goal.",
+      " Take a more subtle, minimalist approach to this transformation.",
+    ];
+
+    const mockups = [];
+
+    for (let i = 0; i < Math.min(count, 4); i++) {
+      try {
+        const instruction = baseInstruction + (variationHints[i] || "");
+        console.log(`Generating mockup ${i + 1}/${count} with Qwen-Image-Edit...`);
+
+        // Build content array: single image for Standard, dual image for Pro
+        const content = targetImage
+          ? [
+              { image: beforeImage },
+              { image: targetImage },
+              { text: instruction },
+            ]
+          : [
+              { image: beforeImage },
+              { text: instruction },
+            ];
+
+        const response = await fetch(
+          "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: "qwen-image-edit-max",
+              input: {
+                messages: [
+                  {
+                    role: "user",
+                    content,
+                  },
+                ],
+              },
+              parameters: {
+                n: 1,
+                size: "1024*1024",
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Qwen API error (${response.status}):`, errorText);
+          throw new Error(`Qwen API error: ${response.status} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log(`Mockup ${i + 1} response received`);
+
+        // Extract image URL from Qwen response format
+        const imageUrl =
+          result.output?.choices?.[0]?.message?.content?.[0]?.image;
+
+        if (imageUrl) {
+          mockups.push({
+            id: `mockup-${i + 1}`,
+            imageUrl,
+          });
+          console.log(`Successfully generated mockup ${i + 1}`);
+        } else {
+          console.error(`No image URL in response for mockup ${i + 1}:`, JSON.stringify(result));
+        }
+      } catch (error: any) {
+        console.error(`Error generating mockup ${i + 1}:`, error.message);
+      }
+    }
+
+    console.log(`=== Generated ${mockups.length}/${count} mockups with Qwen ===`);
+
+    if (mockups.length === 0) {
+      throw new Error("Failed to generate any mockups");
+    }
+
+    return NextResponse.json({
+      mockups,
+      disclaimer: "Concept preview only. Real results depend on materials, techniques, and workmanship.",
+      provider: "qwen-image-edit",
+    });
   } catch (error: any) {
     console.error("Mockup generation error:", error);
     return NextResponse.json(
@@ -64,209 +124,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateWithStability(beforeImage: string, concept: any, count: number) {
-  if (!process.env.STABILITY_API_KEY) {
-    console.error("STABILITY_API_KEY not configured");
-    return NextResponse.json(
-      { error: "Stability AI not configured. Please add STABILITY_API_KEY to .env.local" },
-      { status: 500 }
-    );
-  }
-
-  const mockups = [];
-
-  // Extract base64 from data URL
-  const base64Image = beforeImage.split(',')[1];
-  if (!base64Image) {
-    throw new Error("Invalid image data URL");
-  }
-
-  // Resize image to closest allowed dimension
-  const imageBuffer = Buffer.from(base64Image, 'base64');
-  const metadata = await sharp(imageBuffer).metadata();
-  const [targetWidth, targetHeight] = chooseClosestDimension(metadata.width || 1024, metadata.height || 1024);
-
-  console.log(`Original image: ${metadata.width}x${metadata.height}`);
-  console.log(`Resizing to: ${targetWidth}x${targetHeight} (closest allowed dimension)`);
-
-  const resizedImageBuffer = await sharp(imageBuffer)
-    .resize(targetWidth, targetHeight, {
-      fit: 'cover',
-      position: 'center',
-    })
-    .png()
-    .toBuffer();
-
-  for (let i = 0; i < Math.min(count, 4); i++) {
-    try {
-      console.log(`Generating mockup ${i + 1}/${count} with Stability AI...`);
-
-      // Build prompt emphasizing structure preservation
-      const prompt = buildStabilityPrompt(concept);
-      console.log("Prompt:", prompt);
-
-      // Prepare form data
-      const formData = new FormData();
-
-      // Convert resized buffer to blob
-      const blob = new Blob([resizedImageBuffer], { type: 'image/png' });
-      formData.append('init_image', blob);
-
-      // Add text prompts
-      formData.append('text_prompts[0][text]', prompt);
-      formData.append('text_prompts[0][weight]', '1');
-
-      // Critical parameters for structure preservation
-      formData.append('image_strength', IMAGE_STRENGTH.toString()); // How much to change (0.2-0.35 preserves structure)
-      formData.append('cfg_scale', '7'); // How closely to follow prompt
-      formData.append('samples', '1');
-      formData.append('steps', '30');
-
-      const response = await fetch(
-        'https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
-            'Accept': 'application/json',
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Stability AI error (${response.status}):`, errorText);
-        throw new Error(`Stability AI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.artifacts && data.artifacts[0]) {
-        const imageBase64 = data.artifacts[0].base64;
-        mockups.push({
-          id: `mockup-${i + 1}`,
-          dataUrl: `data:image/png;base64,${imageBase64}`,
-        });
-        console.log(`Successfully generated mockup ${i + 1}`);
-      }
-    } catch (error: any) {
-      console.error(`Error generating mockup ${i + 1}:`, error);
-      // Continue with next mockup even if one fails
-    }
-  }
-
-  console.log(`=== Generated ${mockups.length}/${count} mockups with Stability AI ===`);
-
-  if (mockups.length === 0) {
-    throw new Error("Failed to generate any mockups");
-  }
-
-  return NextResponse.json({
-    mockups,
-    disclaimer: "Concept preview only. Real results depend on materials, techniques, and workmanship.",
-    provider: "stability",
-  });
-}
-
-async function generateWithDALLE(beforeImage: string, concept: any, count: number) {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("OPENAI_API_KEY not configured");
-    return NextResponse.json(
-      { error: "OpenAI not configured. Please add OPENAI_API_KEY to .env.local" },
-      { status: 500 }
-    );
-  }
-
-  const mockups = [];
-  const prompt = buildDALLEPrompt(concept);
-
-  for (let i = 0; i < Math.min(count, 4); i++) {
-    try {
-      console.log(`Generating mockup ${i + 1}/${count} with DALL-E 3...`);
-
-      const response = await openai.images.generate({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "standard",
-        response_format: "url",
-      });
-
-      if (response.data && response.data[0]) {
-        const imageUrl = response.data[0].url;
-        const imageResponse = await fetch(imageUrl!);
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const base64Image = Buffer.from(imageBuffer).toString('base64');
-        const dataUrl = `data:image/png;base64,${base64Image}`;
-
-        mockups.push({
-          id: `mockup-${i + 1}`,
-          dataUrl,
-        });
-      }
-    } catch (error: any) {
-      console.error(`Error generating mockup ${i + 1}:`, error);
-    }
-  }
-
-  console.log(`=== Generated ${mockups.length}/${count} mockups with DALL-E ===`);
-
-  return NextResponse.json({
-    mockups,
-    disclaimer: "Concept preview only. Real results depend on materials, techniques, and workmanship.",
-    provider: "dalle",
-  });
-}
-
-function buildStabilityPrompt(concept: any): string {
+function buildDualImageInstruction(concept: any): string {
   const {
     itemType = "furniture piece",
-    targetStyle = "modern",
-    targetColor = "white",
-    targetFinish = "painted",
-    hardware = "updated hardware",
+    ideaTitle = "transformed furniture",
+    keyTransformations = [],
   } = concept;
 
-  // Emphasize: SAME furniture, ONLY change finish/color
-  return `IMPORTANT: Preserve the exact same furniture structure, shape, and form.
-Only change the surface finish and color.
+  const transformations = keyTransformations.length > 0
+    ? `Key changes to apply: ${keyTransformations.join(", ")}.`
+    : "";
 
-The same ${itemType} with:
-- Style: ${targetStyle}
-- Finish: ${targetFinish}
-- Color: ${targetColor}
-- Hardware: ${hardware}
-
-Keep the EXACT same:
-- Furniture type and proportions
-- Cabinet doors and drawers layout
-- Legs and base structure
-- Overall dimensions
-
-Only change:
-- Paint color and finish
-- Hardware style
-- Surface texture
-
-Photorealistic, professional furniture photography, neutral background, well-lit.`;
+  return `Transfer the style of Image 2 to Image 1. Keep the structure, shape, and composition of Image 1 (the ${itemType}) but transform its visual style to match Image 2 (the target inspiration). ${transformations} The goal is: "${ideaTitle}". Show the realistic finished result. Keep the same setting and background as Image 1. Make the transformation look professional and achievable.`.trim();
 }
 
-function buildDALLEPrompt(concept: any): string {
+function buildEditInstruction(concept: any): string {
   const {
     itemType = "furniture piece",
-    material = "wood",
-    targetStyle = "modern",
-    targetFinish = "painted",
-    targetColor = "white",
-    hardware = "none",
+    ideaTitle = "restored furniture",
+    keyTransformations = [],
+    stepsPreview = [],
+    whyItWorks = "",
   } = concept;
 
-  return `A photograph of a ${itemType} made of ${material} in ${targetStyle} style with:
-- Finish: ${targetFinish} in ${targetColor}
-- Hardware: ${hardware}
-- Overall aesthetic: ${targetStyle}
+  const transformations = keyTransformations.length > 0
+    ? `Key changes: ${keyTransformations.join(", ")}.`
+    : "";
 
-Photorealistic style, clean well-lit interior photography, neutral background, professional product photography quality.`;
+  const steps = stepsPreview.length > 0
+    ? `Process: ${stepsPreview.join(", ")}.`
+    : "";
+
+  const context = whyItWorks ? `Context: ${whyItWorks}.` : "";
+
+  return `Transform this ${itemType} into: "${ideaTitle}". ${transformations} ${steps} ${context} Show the realistic finished result. Keep the same setting and background. Make the transformation look professional and achievable.`.trim();
 }

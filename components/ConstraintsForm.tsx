@@ -1,22 +1,93 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, Palette, Wrench, DollarSign, Clock, Target, User, Box, Gift } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, ChevronRight, Palette, Wrench, DollarSign, Clock, Target, User, Box, Gift, Pencil, Sparkles } from "lucide-react";
+import type { UserProfile } from "./Onboarding";
 
 interface ConstraintsFormProps {
   image: string;
   onSubmit: (constraints: any) => void;
   onBack: () => void;
   mode?: "standard" | "pro" | "creative-reuse";
+  userProfile?: UserProfile | null;
 }
 
-const STYLES = [
-  { id: "modern", label: "Modern", emoji: "✨" },
-  { id: "rustic", label: "Rustic", emoji: "🪵" },
-  { id: "coastal", label: "Coastal", emoji: "🌊" },
-  { id: "mid-century", label: "Mid-Century", emoji: "🎨" },
-  { id: "industrial", label: "Industrial", emoji: "⚙️" },
-  { id: "boho", label: "Boho", emoji: "🌺" },
+interface DesignSubcategory {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+interface DesignCategory {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  subcategories: DesignSubcategory[];
+}
+
+const DESIGN_DIRECTIONS: DesignCategory[] = [
+  {
+    id: "classic",
+    label: "Classic Styles",
+    emoji: "🎨",
+    description: "Timeless design aesthetics",
+    subcategories: [
+      { id: "modern", label: "Modern" },
+      { id: "rustic", label: "Rustic" },
+      { id: "coastal", label: "Coastal" },
+      { id: "mid-century", label: "Mid-Century" },
+      { id: "industrial", label: "Industrial" },
+      { id: "boho", label: "Boho" },
+      { id: "farmhouse", label: "Farmhouse" },
+      { id: "scandinavian", label: "Scandinavian" },
+    ],
+  },
+  {
+    id: "retro-60s",
+    label: "Retro 60's",
+    emoji: "🌈",
+    description: "Groovy throwback vibes",
+    subcategories: [
+      { id: "rainbow", label: "Rainbow Paint Over", description: "Bright multi-colour stripes or gradient" },
+      { id: "psychedelic", label: "Psychedelic Design", description: "Swirls, tie-dye patterns, trippy colours" },
+      { id: "bold-retro", label: "Bold Retro Colours", description: "Avocado green, burnt orange, mustard yellow" },
+    ],
+  },
+  {
+    id: "kids",
+    label: "Designs for Kids",
+    emoji: "🧸",
+    description: "Fun themes for children",
+    subcategories: [
+      { id: "blue-paint", label: "Blue Paint Over", description: "Solid blue or ocean tones" },
+      { id: "pink-paint", label: "Pink Paint Over", description: "Solid pink or blush tones" },
+      { id: "white-paint", label: "White Paint Over", description: "Clean white or cream" },
+      { id: "unicorns", label: "Unicorns", description: "Pastel rainbow + unicorn motifs" },
+      { id: "balloons", label: "Balloons", description: "Balloon shapes + party colours" },
+      { id: "rainbows-clouds", label: "Rainbows & Clouds", description: "Rainbow arcs + fluffy clouds" },
+      { id: "space", label: "Space - Rockets & Stars", description: "Planets, rockets, stars, galaxies" },
+      { id: "dolls", label: "Dolls", description: "Doll-house style pastel design" },
+      { id: "teddy-bears", label: "Teddy Bears", description: "Cute bear motifs + warm tones" },
+    ],
+  },
+  {
+    id: "trending",
+    label: "2025-2026 Trends",
+    emoji: "🔥",
+    description: "What's hot right now",
+    subcategories: [
+      { id: "bold-moody", label: "Bold & Moody Colours", description: "Deep emerald, mustard, navy, high-gloss black" },
+      { id: "sculptural", label: "Sculptural & Curved", description: "Scalloped edges, organic curves" },
+      { id: "decoupage", label: "Decoupage & Pattern", description: "Botanical/floral motifs, patterned paper" },
+      { id: "mixed-materials", label: "Mixed Materials", description: "Wood + metal legs, leather accents" },
+      { id: "statement-hardware", label: "Statement Hardware", description: "Modern or vintage-inspired handles" },
+      { id: "two-tone", label: "Two-Tone Design", description: "Contrasting paint + stained wood" },
+      { id: "hand-painted", label: "Hand-Painted Detailing", description: "Floral garlands, leafy cottagecore" },
+      { id: "stained-revival", label: "Stained Wood Revival", description: "Showcase natural grain, modernised" },
+      { id: "hidden-color", label: "Hidden Colour Pop", description: "Surprise bright colour inside drawers" },
+    ],
+  },
 ];
 
 const TOOLS = [
@@ -67,12 +138,20 @@ const INTENDED_AUDIENCE = [
   { id: "donation", label: "Donation", emoji: "❤️", description: "Give to charity" },
 ];
 
-export default function ConstraintsForm({ image, onSubmit, onBack, mode = "standard" }: ConstraintsFormProps) {
-  // Standard/Pro mode state
-  const [styleGoal, setStyleGoal] = useState("");
-  const [tools, setTools] = useState("");
+export default function ConstraintsForm({ image, onSubmit, onBack, mode = "standard", userProfile }: ConstraintsFormProps) {
+  const hasProfile = !!(userProfile?.tools && userProfile?.time);
+
+  // Design direction state (replaces old styleGoal)
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [customDesignText, setCustomDesignText] = useState("");
+
+  // Standard/Pro mode state — pre-fill from profile
+  const [tools, setTools] = useState(hasProfile ? userProfile!.tools : "");
   const [budget, setBudget] = useState("");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(hasProfile ? userProfile!.time : "");
+  const [showToolsTime, setShowToolsTime] = useState(!hasProfile);
 
   // Creative Reuse mode state
   const [useCase, setUseCase] = useState("");
@@ -83,11 +162,36 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
   const isProMode = mode === "pro";
   const isCreativeReuse = mode === "creative-reuse";
 
+  const hasDesignDirection = (selectedCategory && selectedSubcategory) || customDesignText.trim().length > 0;
+
   const isValid = isCreativeReuse
     ? (useCase && skillLevel && materialsAvailable && intendedAudience && budget && time)
     : isProMode
       ? (tools && budget && time)
-      : (styleGoal && tools && budget && time);
+      : (hasDesignDirection && tools && budget && time);
+
+  const handleCategoryToggle = (categoryId: string) => {
+    if (expandedCategory === categoryId) {
+      setExpandedCategory(null);
+    } else {
+      setExpandedCategory(categoryId);
+    }
+  };
+
+  const handleSubcategorySelect = (categoryId: string, subcategoryId: string) => {
+    setSelectedCategory(categoryId);
+    setSelectedSubcategory(subcategoryId);
+    setCustomDesignText(""); // Clear custom text when selecting a preset
+  };
+
+  const handleCustomTextChange = (text: string) => {
+    setCustomDesignText(text);
+    if (text.trim()) {
+      // Clear preset selection when typing custom text
+      setSelectedCategory("");
+      setSelectedSubcategory("");
+    }
+  };
 
   const handleSubmit = () => {
     if (isValid) {
@@ -97,21 +201,55 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
       };
 
       if (isCreativeReuse) {
-        // Creative Reuse mode constraints
         constraints.useCase = useCase;
         constraints.skillLevel = skillLevel;
         constraints.materialsAvailable = materialsAvailable;
         constraints.intendedAudience = intendedAudience;
       } else {
-        // Standard/Pro mode constraints
         constraints.tools = tools;
         if (!isProMode) {
-          constraints.styleGoal = styleGoal;
+          if (customDesignText.trim()) {
+            constraints.designDirection = {
+              type: "custom",
+              customText: customDesignText.trim(),
+            };
+            // Keep styleGoal for backward compat
+            constraints.styleGoal = "custom";
+          } else {
+            const cat = DESIGN_DIRECTIONS.find(c => c.id === selectedCategory);
+            const sub = cat?.subcategories.find(s => s.id === selectedSubcategory);
+            constraints.designDirection = {
+              type: "preset",
+              categoryId: selectedCategory,
+              categoryLabel: cat?.label || selectedCategory,
+              subcategoryId: selectedSubcategory,
+              subcategoryLabel: sub?.label || selectedSubcategory,
+              subcategoryDescription: sub?.description || "",
+            };
+            // Keep styleGoal for backward compat (use subcategory label)
+            constraints.styleGoal = sub?.label || selectedSubcategory;
+          }
         }
       }
 
       onSubmit(constraints);
     }
+  };
+
+  const accentIconClass = isCreativeReuse ? "text-orange-400" : isProMode ? "text-green-400" : "text-purple-400";
+  const accentSelectedClass = isCreativeReuse ? "border-orange-500 bg-orange-500/20" : isProMode ? "border-green-500 bg-green-500/20" : "border-purple-500 bg-purple-500/20";
+  const toolLabel = TOOLS.find((t) => t.id === tools)?.label || "Not set";
+  const timeLabel = TIMES.find((t) => t.value === time)?.label || "Not set";
+
+  // Get the selected design direction label for display
+  const getSelectedLabel = () => {
+    if (customDesignText.trim()) return `Custom: ${customDesignText.trim()}`;
+    if (selectedCategory && selectedSubcategory) {
+      const cat = DESIGN_DIRECTIONS.find(c => c.id === selectedCategory);
+      const sub = cat?.subcategories.find(s => s.id === selectedSubcategory);
+      return sub?.label || "";
+    }
+    return "";
   };
 
   return (
@@ -135,28 +273,107 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
         <img src={image} alt="Preview" className="w-20 h-20 object-cover rounded-xl border-2 border-gray-700" />
       </div>
 
-      {/* Style Goal - Only show in standard mode */}
+      {/* Design Direction — Only show in standard mode */}
       {!isProMode && !isCreativeReuse && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-white font-semibold">
             <Palette className="w-5 h-5 text-purple-400" />
-            <span>Style Goal</span>
+            <span>Design Direction</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {STYLES.map((style) => (
-              <button
-                key={style.id}
-                onClick={() => setStyleGoal(style.id)}
-                className={`btn p-4 rounded-xl border-2 transition-all ${
-                  styleGoal === style.id
-                    ? "border-purple-500 bg-purple-500/20"
-                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
-                }`}
-              >
-                <div className="text-2xl mb-1">{style.emoji}</div>
-                <div className="text-sm font-medium text-white">{style.label}</div>
-              </button>
-            ))}
+
+          {/* Selected indicator */}
+          {hasDesignDirection && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/15 border border-purple-500/30 rounded-xl">
+              <Sparkles className="w-4 h-4 text-purple-400 flex-shrink-0" />
+              <span className="text-sm text-purple-300 font-medium truncate">{getSelectedLabel()}</span>
+            </div>
+          )}
+
+          {/* Collapsible category cards */}
+          <div className="space-y-2">
+            {DESIGN_DIRECTIONS.map((category) => {
+              const isExpanded = expandedCategory === category.id;
+              const hasSelection = selectedCategory === category.id;
+
+              return (
+                <div key={category.id} className="rounded-xl border-2 border-gray-700 bg-gray-800 overflow-hidden transition-all">
+                  {/* Category header */}
+                  <button
+                    onClick={() => handleCategoryToggle(category.id)}
+                    className={`btn w-full p-4 flex items-center gap-3 transition-all text-left ${
+                      hasSelection ? "bg-purple-500/10" : "hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <div className="text-2xl flex-shrink-0">{category.emoji}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-white flex items-center gap-2">
+                        {category.label}
+                        {hasSelection && (
+                          <span className="text-xs px-2 py-0.5 bg-purple-500/30 text-purple-300 rounded-md">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400">{category.description}</div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Subcategories (collapsible) */}
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-1.5 border-t border-gray-700">
+                      <div className="pt-2" />
+                      {category.subcategories.map((sub) => {
+                        const isSelected = selectedCategory === category.id && selectedSubcategory === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => handleSubcategorySelect(category.id, sub.id)}
+                            className={`btn w-full p-3 rounded-lg border transition-all text-left ${
+                              isSelected
+                                ? "border-purple-500 bg-purple-500/20"
+                                : "border-gray-600 bg-gray-700/50 hover:border-gray-500"
+                            }`}
+                          >
+                            <div className="font-medium text-white text-sm">{sub.label}</div>
+                            {sub.description && (
+                              <div className="text-xs text-gray-400 mt-0.5">{sub.description}</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Custom design input */}
+          <div className="rounded-xl border-2 border-gray-700 bg-gray-800 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Pencil className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-semibold text-white">Your Own Idea</span>
+            </div>
+            <textarea
+              value={customDesignText}
+              onChange={(e) => handleCustomTextChange(e.target.value)}
+              placeholder="Describe your design idea... e.g. 'Farmhouse style with copper accents and distressed edges'"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none"
+              rows={2}
+            />
+            {customDesignText.trim() && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-purple-400">
+                <Sparkles className="w-3 h-3" />
+                AI will generate ideas based on your description
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -182,34 +399,6 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
                 <div className="text-2xl mb-1">{usecase.emoji}</div>
                 <div className="text-sm font-medium text-white">{usecase.label}</div>
                 <div className="text-xs text-gray-400 mt-1">{usecase.description}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tools - Only show in Standard/Pro mode */}
-      {!isCreativeReuse && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-white font-semibold">
-            <Wrench className={`w-5 h-5 ${isProMode ? "text-green-400" : "text-purple-400"}`} />
-            <span>Available Tools</span>
-          </div>
-          <div className="space-y-2">
-            {TOOLS.map((tool) => (
-              <button
-                key={tool.id}
-                onClick={() => setTools(tool.id)}
-                className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
-                  tools === tool.id
-                    ? isProMode
-                      ? "border-green-500 bg-green-500/20"
-                      : "border-purple-500 bg-purple-500/20"
-                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
-                }`}
-              >
-                <div className="font-semibold text-white">{tool.label}</div>
-                <div className="text-sm text-gray-400">{tool.description}</div>
               </button>
             ))}
           </div>
@@ -298,7 +487,7 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
       {/* Budget */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-white font-semibold">
-          <DollarSign className={`w-5 h-5 ${isCreativeReuse ? "text-orange-400" : isProMode ? "text-green-400" : "text-purple-400"}`} />
+          <DollarSign className={`w-5 h-5 ${accentIconClass}`} />
           <span>Budget</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -308,11 +497,7 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
               onClick={() => setBudget(budgetOption.value)}
               className={`btn p-4 rounded-xl border-2 transition-all ${
                 budget === budgetOption.value
-                  ? isCreativeReuse
-                    ? "border-orange-500 bg-orange-500/20"
-                    : isProMode
-                      ? "border-green-500 bg-green-500/20"
-                      : "border-purple-500 bg-purple-500/20"
+                  ? accentSelectedClass
                   : "border-gray-700 bg-gray-800 hover:border-gray-600"
               }`}
             >
@@ -323,33 +508,117 @@ export default function ConstraintsForm({ image, onSubmit, onBack, mode = "stand
         </div>
       </div>
 
-      {/* Time */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-white font-semibold">
-          <Clock className={`w-5 h-5 ${isCreativeReuse ? "text-orange-400" : isProMode ? "text-green-400" : "text-purple-400"}`} />
-          <span>Time Available</span>
-        </div>
-        <div className="space-y-2">
-          {TIMES.map((timeOption) => (
+      {/* Tools & Time — collapsible when pre-filled from profile */}
+      {!isCreativeReuse && hasProfile && !showToolsTime && (
+        <button
+          onClick={() => setShowToolsTime(true)}
+          className="btn w-full p-4 rounded-xl border-2 border-gray-700 bg-gray-800/50 hover:border-gray-600 transition-all text-left"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-400 mb-1">Using your defaults</div>
+              <div className="text-sm text-white">
+                <Wrench className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
+                {toolLabel}
+                <span className="text-gray-600 mx-2">|</span>
+                <Clock className="w-3.5 h-3.5 inline mr-1 text-gray-400" />
+                {timeLabel}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              Change
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+        </button>
+      )}
+
+      {/* Tools - expanded */}
+      {!isCreativeReuse && (showToolsTime || !hasProfile) && (
+        <>
+          {hasProfile && (
             <button
-              key={timeOption.id}
-              onClick={() => setTime(timeOption.value)}
-              className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
-                time === timeOption.value
-                  ? isCreativeReuse
-                    ? "border-orange-500 bg-orange-500/20"
-                    : isProMode
-                      ? "border-green-500 bg-green-500/20"
-                      : "border-purple-500 bg-purple-500/20"
-                  : "border-gray-700 bg-gray-800 hover:border-gray-600"
-              }`}
+              onClick={() => setShowToolsTime(false)}
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-400 transition-colors"
             >
-              <div className="font-semibold text-white">{timeOption.label}</div>
-              <div className="text-sm text-gray-400">{timeOption.description}</div>
+              <ChevronUp className="w-4 h-4" />
+              Hide tools &amp; time
             </button>
-          ))}
+          )}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-white font-semibold">
+              <Wrench className={`w-5 h-5 ${accentIconClass}`} />
+              <span>Available Tools</span>
+            </div>
+            <div className="space-y-2">
+              {TOOLS.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => setTools(tool.id)}
+                  className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    tools === tool.id
+                      ? accentSelectedClass
+                      : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                  }`}
+                >
+                  <div className="font-semibold text-white">{tool.label}</div>
+                  <div className="text-sm text-gray-400">{tool.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-white font-semibold">
+              <Clock className={`w-5 h-5 ${accentIconClass}`} />
+              <span>Time Available</span>
+            </div>
+            <div className="space-y-2">
+              {TIMES.map((timeOption) => (
+                <button
+                  key={timeOption.id}
+                  onClick={() => setTime(timeOption.value)}
+                  className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                    time === timeOption.value
+                      ? accentSelectedClass
+                      : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                  }`}
+                >
+                  <div className="font-semibold text-white">{timeOption.label}</div>
+                  <div className="text-sm text-gray-400">{timeOption.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Time - standalone for Creative Reuse (always visible since no profile tools) */}
+      {isCreativeReuse && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-white font-semibold">
+            <Clock className="w-5 h-5 text-orange-400" />
+            <span>Time Available</span>
+          </div>
+          <div className="space-y-2">
+            {TIMES.map((timeOption) => (
+              <button
+                key={timeOption.id}
+                onClick={() => setTime(timeOption.value)}
+                className={`btn w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  time === timeOption.value
+                    ? "border-orange-500 bg-orange-500/20"
+                    : "border-gray-700 bg-gray-800 hover:border-gray-600"
+                }`}
+              >
+                <div className="font-semibold text-white">{timeOption.label}</div>
+                <div className="text-sm text-gray-400">{timeOption.description}</div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Submit */}
       <button
