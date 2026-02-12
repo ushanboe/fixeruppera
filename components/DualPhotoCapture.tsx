@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Camera, Upload, X, Check, Search } from "lucide-react";
-import InspirationSearch from "./InspirationSearch";
+import { Camera, Upload, X, Check, ExternalLink } from "lucide-react";
 
 interface DualPhotoCaptureProps {
   onCapture: (beforeImage: string, targetImage: string) => void;
@@ -15,7 +14,6 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
   const [targetImage, setTargetImage] = useState<string | null>(null);
   const [cameraTarget, setCameraTarget] = useState<CameraTarget>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [showInspirationSearch, setShowInspirationSearch] = useState(false);
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const targetInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -313,26 +311,27 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
                 <div className="w-full border-t border-gray-800"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-black text-gray-500 font-medium text-xs">or</span>
+                <span className="px-4 bg-black text-gray-500 font-medium text-xs">need ideas?</span>
               </div>
             </div>
 
-            {/* Search Inspiration button */}
-            <button
-              onClick={() => setShowInspirationSearch(true)}
-              disabled={!beforeImage}
-              className={`btn w-full bg-gray-900 border-2 border-amber-500/50 rounded-2xl hover:bg-gray-800 hover:border-amber-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden ${!beforeImage ? "opacity-40 pointer-events-none" : ""}`}
+            {/* Browse Pinterest button */}
+            <a
+              href="https://www.pinterest.com/search/pins/?q=furniture+makeover+inspiration"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`btn block w-full bg-gray-900 border-2 border-red-500/40 rounded-2xl hover:bg-gray-800 hover:border-red-500 hover:shadow-lg active:scale-98 transition-all group overflow-hidden no-underline ${!beforeImage ? "opacity-40 pointer-events-none" : ""}`}
             >
               <div className="flex items-center justify-center gap-3 py-4">
-                <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center group-hover:bg-amber-500/30 group-hover:scale-110 transition-all">
-                  <Search className="w-5 h-5 text-amber-400" strokeWidth={2.5} />
+                <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center group-hover:bg-red-500/30 group-hover:scale-110 transition-all">
+                  <ExternalLink className="w-5 h-5 text-red-400" strokeWidth={2.5} />
                 </div>
                 <div className="text-left">
-                  <div className="text-base font-bold text-white">Search Inspiration</div>
-                  <div className="text-xs text-gray-400">Browse free furniture style photos</div>
+                  <div className="text-base font-bold text-white">Browse Pinterest</div>
+                  <div className="text-xs text-gray-400">Find inspiration, save, then upload here</div>
                 </div>
               </div>
-            </button>
+            </a>
           </>
         )}
       </div>
@@ -356,16 +355,6 @@ export default function DualPhotoCapture({ onCapture }: DualPhotoCaptureProps) {
         </p>
       </div>
 
-      {/* Inspiration Search Modal */}
-      {showInspirationSearch && (
-        <InspirationSearch
-          onSelect={(dataUrl) => {
-            setTargetImage(dataUrl);
-            setShowInspirationSearch(false);
-          }}
-          onClose={() => setShowInspirationSearch(false)}
-        />
-      )}
     </div>
   );
 }
