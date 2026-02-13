@@ -307,21 +307,24 @@ export default function MockupGallery({ beforeImage, targetImage, concept, onClo
                     className="relative group cursor-pointer"
                     onClick={() => setSelectedMockup(index)}
                   >
-                    <div className="relative bg-gray-900 rounded-2xl overflow-hidden shadow-xl border-2 border-purple-500/30 hover:border-purple-500 transition-all">
-                      <img src={mockup.imageUrl || mockup.dataUrl} alt={`Mockup ${index + 1}`} className="w-full h-auto" />
-                      <div className="absolute top-3 right-3 bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded-md">
-                        Option {index + 1}
-                      </div>
-                      {/* Tap to compare hint */}
-                      <div className="absolute top-12 left-3 right-3 flex justify-center pointer-events-none">
-                        <div className="bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoveHorizontal className="w-3 h-3 inline mr-1" />
-                          Tap to compare
+                    <div className="bg-gray-900 rounded-2xl overflow-hidden shadow-xl border-2 border-purple-500/30 hover:border-purple-500 transition-all">
+                      {/* Image area */}
+                      <div className="relative">
+                        <img src={mockup.imageUrl || mockup.dataUrl} alt={`Mockup ${index + 1}`} className="w-full h-auto" />
+                        <div className="absolute top-3 right-3 bg-purple-500 text-white text-xs font-bold px-2 py-1 rounded-md">
+                          Option {index + 1}
+                        </div>
+                        {/* Tap to compare hint */}
+                        <div className="absolute bottom-3 left-3 right-3 flex justify-center pointer-events-none">
+                          <div className="bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoveHorizontal className="w-3 h-3 inline mr-1" />
+                            Tap to compare
+                          </div>
                         </div>
                       </div>
-                      {/* Save button */}
+                      {/* Save button - below image in normal flow */}
                       {onSelectMockup && (
-                        <div className="absolute bottom-3 left-3 right-3">
+                        <div className="p-3">
                           <button
                             onClick={(e) => handlePickMockup(index, e)}
                             disabled={pickingIndex !== null}

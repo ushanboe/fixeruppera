@@ -211,6 +211,7 @@ export default function Home() {
           ],
           identification: identificationData,
           constraints: constraintsData,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getRegionConfig, scaleBudget } from "@/lib/region";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,7 +9,8 @@ const openai = new OpenAI({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { analysis, constraints } = body;
+    const { analysis, constraints, timezone } = body;
+    const region = getRegionConfig(timezone);
 
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY not configured");
@@ -24,12 +26,13 @@ export async function POST(request: NextRequest) {
     const issues = analysis.condition?.issues?.map((i: any) => i.label).join(", ") || "no major issues noted";
     const safetyFlags = analysis.safetyFlags?.map((f: any) => `${f.label}: ${f.why}`).join("; ") || "none";
 
-    // Map budget band to actual ranges for Australian context
-    const budgetRanges = {
+    // Map budget band to actual ranges, scaled for region
+    const baseBudgetRanges = {
       "$": { min: 20, max: 100, description: "minimal budget" },
       "$$": { min: 80, max: 250, description: "moderate budget" },
       "$$$": { min: 200, max: 500, description: "generous budget" }
     };
+    const budgetRanges = scaleBudget(baseBudgetRanges, region);
     const budgetInfo = budgetRanges[constraints.budgetBand as keyof typeof budgetRanges] || budgetRanges["$$"];
 
     // Detect Creative Reuse mode (has useCase instead of styleGoal)
@@ -116,7 +119,7 @@ USER CONSTRAINTS:
 - Skill level: ${constraints.skillLevel}
 - Materials available: ${constraints.materialsAvailable}
 - Intended audience: ${constraints.intendedAudience}
-- Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
+- Budget: ${budgetInfo.description} (${region.currency} ${budgetInfo.min}-${budgetInfo.max})
 - Time: ${constraints.timeBand}
 
 CRITICAL PRACTICALITY REQUIREMENTS:
@@ -126,7 +129,7 @@ CRITICAL PRACTICALITY REQUIREMENTS:
 4. DO NOT suggest major reconstruction (no "turn table into wall shelf" or "convert to bench")
 5. DO NOT suggest disassembly or cutting down the main structure
 6. Focus on surface treatments, repairs, and styling changes
-7. Use Australian context (Bunnings products, climate, lifestyle)
+7. ${region.pricingContext}
 8. Match user's skill level - don't suggest complex joinery for beginners
 
 GOOD EXAMPLES (for old wooden side table):
@@ -154,7 +157,7 @@ Provide response as JSON:
       "whyItWorks": "Brief explanation focusing on preserving the object's core purpose",
       "difficulty": "beginner|intermediate|advanced",
       "timeEstimate": {"minHours": number, "maxHours": number},
-      "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+      "costEstimate": {"min": number, "max": number, "currency": "${region.currency}"},
       "keyTransformations": ["Surface finish changes", "Structure stays same", "Minor additions like hardware"],
       "stepsPreview": ["Step 1", "Step 2", "Step 3"]
     }
@@ -173,7 +176,7 @@ ${materialGuidance}
 
 USER CONSTRAINTS:
 - Style goal: ${constraints.styleGoal || "not specified"}
-- Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
+- Budget: ${budgetInfo.description} (${region.currency} ${budgetInfo.min}-${budgetInfo.max})
 - Tools available: ${constraints.tools} (basic = hand tools only, power = power tools available)
 - Timeline: ${constraints.timeBand}
 ${designDirectionGuidance}
@@ -184,7 +187,7 @@ IMPORTANT GUIDELINES:
 3. DO NOT suggest upholstery removal if the item has no upholstery
 4. Consider the user's budget, tools, and experience level
 5. Include at least one "quick & easy" option and one "more involved" option
-6. Be realistic about time and cost estimates for Australian context
+6. ${region.pricingContext}
 7. Consider safety concerns in your suggestions
 8. Each idea should be genuinely different from the others
 9. ALL ideas must align with the user's chosen design direction — do NOT generate generic ideas that ignore their selection
@@ -198,7 +201,7 @@ Provide response as JSON:
       "whyItWorks": "Brief explanation of why this suits the item and user's goals",
       "difficulty": "easy|medium|hard",
       "timeEstimate": {"minHours": number, "maxHours": number},
-      "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+      "costEstimate": {"min": number, "max": number, "currency": "${region.currency}"},
       "keyTransformations": ["Key change 1", "Key change 2", "Key change 3"],
       "stepsPreview": ["Step 1", "Step 2", "Step 3", "Step 4"]
     }
@@ -240,7 +243,7 @@ Generate 4-5 ideas that are appropriate for this specific item and user's constr
           whyItWorks: "Simple cleaning and minor repairs can make a big difference",
           difficulty: "easy",
           timeEstimate: { minHours: 1, maxHours: 3 },
-          costEstimate: { min: 10, max: 40, currency: "AUD" },
+          costEstimate: { min: 10, max: 40, currency: "USD" },
           keyTransformations: ["Clean thoroughly", "Minor repairs", "Apply protective finish"],
           stepsPreview: ["Clean thoroughly", "Repair minor damage", "Apply protective finish", "Polish/buff"]
         }

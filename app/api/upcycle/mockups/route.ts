@@ -27,9 +27,9 @@ export async function POST(request: NextRequest) {
     // Variation hints to produce genuinely different mockups
     const variationHints = [
       "", // First mockup: use base instruction as-is
-      " Try a slightly different interpretation — vary the color tones, finish, or styling approach while keeping the same transformation concept.",
-      " Explore a bolder creative direction — different color palette or accent details while achieving the same transformation goal.",
-      " Take a more subtle, minimalist approach to this transformation.",
+      " IMPORTANT: Create a distinctly DIFFERENT version. Use a contrasting color scheme (e.g., if the first would be warm tones, use cool tones instead). Change the finish type (matte vs glossy vs distressed). The result should look noticeably different from other variations while achieving the same transformation goal.",
+      " IMPORTANT: Create a BOLD, dramatic interpretation. Use unexpected accent colors, decorative details, or a striking two-tone finish. Make this version stand out as the most creative option.",
+      " IMPORTANT: Create a MINIMAL, understated version. Use neutral earth tones, clean lines, and a simple matte or natural wood finish. This should be the most subtle, elegant interpretation.",
     ];
 
     // Generate all mockups in parallel with per-call timeout to stay under Vercel's 60s limit

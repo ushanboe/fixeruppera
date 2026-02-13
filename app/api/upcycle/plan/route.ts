@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getRegionConfig } from "@/lib/region";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -8,7 +9,8 @@ const openai = new OpenAI({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { analysis, ideaId, constraints, assumptions, selectedIdea } = body;
+    const { analysis, ideaId, constraints, assumptions, selectedIdea, timezone } = body;
+    const region = getRegionConfig(timezone);
 
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY not configured");
@@ -97,7 +99,7 @@ CRITICAL REQUIREMENTS:
 3. Include disassembly/cleaning steps if needed
 4. Provide modification instructions specific to the transformation
 5. Include assembly/installation steps for new purpose
-6. Use Australian products (Bunnings context) and realistic pricing
+6. ${region.pricingContext}
 7. Safety warnings specific to repurposing (sharp edges, rust, stability)
 8. Suggest where to take photos/sketches at key steps
 
@@ -106,10 +108,10 @@ Provide response as JSON:
   "title": "Transformation plan title (FROM → TO format)",
   "difficulty": "beginner|intermediate|advanced",
   "timeEstimate": {"minHours": number, "maxHours": number},
-  "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+  "costEstimate": {"min": number, "max": number, "currency": "${region.currency}"},
   "materials": [
     {
-      "item": "Specific product name",
+      "item": "Generic product description (no brand or store names)",
       "qty": "Realistic quantity for transformation"
     }
   ],
@@ -128,7 +130,7 @@ Provide response as JSON:
   ],
   "resale": {
     "enabled": true,
-    "range": {"min": number, "max": number, "currency": "AUD"},
+    "range": {"min": number, "max": number, "currency": "${region.currency}"},
     "note": "Value assessment for the repurposed item"
   }
 }
@@ -164,7 +166,7 @@ CRITICAL REQUIREMENTS:
    - Metal: rust removal, metal primer, spray paint or enamel
    - Wood: sanding, wood primer, wood stain or paint
    - Don't suggest wood staining for metal items
-3. Include Australian product names and realistic Australian pricing
+3. ${region.pricingContext}
 4. Each step should be detailed and specific to THIS item
 5. Consider the condition issues when planning steps
 6. Include safety warnings specific to the materials and processes
@@ -174,10 +176,10 @@ Provide response as JSON:
   "title": "Specific descriptive title for this plan",
   "difficulty": "easy|medium|hard",
   "timeEstimate": {"minHours": number, "maxHours": number},
-  "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+  "costEstimate": {"min": number, "max": number, "currency": "${region.currency}"},
   "materials": [
     {
-      "item": "Specific product name",
+      "item": "Generic product description (no brand or store names)",
       "qty": "Realistic quantity for THIS specific item (e.g., '2L for large bed frame', '500ml for small chair')"
     }
   ],
@@ -196,7 +198,7 @@ Provide response as JSON:
   ],
   "resale": {
     "enabled": true,
-    "range": {"min": number, "max": number, "currency": "AUD"},
+    "range": {"min": number, "max": number, "currency": "${region.currency}"},
     "note": "Realistic assessment based on item type and transformation"
   }
 }
@@ -232,7 +234,7 @@ Generate a detailed, specific plan with 5-8 steps and 6-12 materials with realis
       title: "Basic Makeover Plan",
       difficulty: "easy",
       timeEstimate: { minHours: 2, maxHours: 6 },
-      costEstimate: { min: 30, max: 100, currency: "AUD" },
+      costEstimate: { min: 30, max: 100, currency: "USD" },
       materials: [
         { item: "Cleaning supplies", qty: "As needed" },
         { item: "Paint or finish", qty: "As needed" },
@@ -263,7 +265,7 @@ Generate a detailed, specific plan with 5-8 steps and 6-12 materials with realis
       ],
       resale: {
         enabled: true,
-        range: { min: 50, max: 150, currency: "AUD" },
+        range: { min: 50, max: 150, currency: "USD" },
         note: "Value depends on quality of execution"
       },
       error: error.message || "AI service temporarily unavailable - showing generic plan"

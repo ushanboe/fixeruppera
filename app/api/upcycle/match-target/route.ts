@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getRegionConfig, scaleBudget } from "@/lib/region";
 
 export const maxDuration = 60;
 
@@ -10,7 +11,8 @@ const openai = new OpenAI({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { images, identification, constraints } = body;
+    const { images, identification, constraints, timezone } = body;
+    const region = getRegionConfig(timezone);
 
     // DEBUG: Log incoming request data
     console.log("=== MATCH-TARGET DEBUG START ===");
@@ -49,12 +51,12 @@ export async function POST(request: NextRequest) {
     console.log("  - targetStyle:", targetStyle);
     console.log("  - targetFeatures:", targetFeatures);
 
-    // Map budget band to actual ranges for Australian context
-    const budgetRanges = {
+    const baseBudgetRanges = {
       "$": { min: 20, max: 100, description: "minimal budget" },
       "$$": { min: 80, max: 250, description: "moderate budget" },
       "$$$": { min: 200, max: 500, description: "generous budget" }
     };
+    const budgetRanges = scaleBudget(baseBudgetRanges, region);
     const budgetInfo = budgetRanges[constraints.budgetBand as keyof typeof budgetRanges] || budgetRanges["$$"];
 
     const prompt = `Create a transformation plan to convert the user's furniture to match the target style.
@@ -68,7 +70,7 @@ TARGET STYLE (already identified):
 ${targetFeatures.length > 0 ? `- Key Features: ${targetFeatures.join(", ")}` : ""}
 
 USER CONSTRAINTS:
-- Budget: ${budgetInfo.description} (AUD ${budgetInfo.min}-${budgetInfo.max})
+- Budget: ${budgetInfo.description} (${region.currency} ${budgetInfo.min}-${budgetInfo.max})
 - Tools available: ${constraints.tools} (basic = hand tools only, power = power tools available)
 - Timeline: ${constraints.timeBand}
 - Experience: ${constraints.experience || "beginner"}
@@ -98,10 +100,10 @@ Provide response as JSON:
     "title": "Descriptive transformation title",
     "difficulty": "easy|medium|hard",
     "timeEstimate": {"minHours": number, "maxHours": number},
-    "costEstimate": {"min": number, "max": number, "currency": "AUD"},
+    "costEstimate": {"min": number, "max": number, "currency": "${region.currency}"},
     "materials": [
       {
-        "item": "Specific product name",
+        "item": "Generic product description (no brand or store names)",
         "qty": "Realistic quantity (consider actual item size and surface area)"
       }
     ],
@@ -120,7 +122,7 @@ Provide response as JSON:
     ],
     "resale": {
       "enabled": true,
-      "range": {"min": number, "max": number, "currency": "AUD"},
+      "range": {"min": number, "max": number, "currency": "${region.currency}"},
       "note": "Resale estimate note"
     }
   }
@@ -211,7 +213,7 @@ IMPORTANT:
         title: "Basic Transformation Plan",
         difficulty: "medium",
         timeEstimate: { minHours: 4, maxHours: 12 },
-        costEstimate: { min: 50, max: 200, currency: "AUD" },
+        costEstimate: { min: 50, max: 200, currency: "USD" },
         materials: [
           { item: "Cleaning supplies", qty: "As needed" },
           { item: "Paint or finish", qty: "As needed" },
@@ -242,7 +244,7 @@ IMPORTANT:
         ],
         resale: {
           enabled: true,
-          range: { min: 80, max: 250, currency: "AUD" },
+          range: { min: 80, max: 250, currency: "USD" },
           note: "Value depends on quality of transformation"
         }
       },

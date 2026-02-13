@@ -67,6 +67,8 @@ export default function SavedPlans({ onBack }: SavedPlansProps) {
         initialPlan={selectedPlan.plan}
         initialCompletedSteps={selectedPlan.completedSteps}
         initialMockupImage={selectedPlan.mockupImage}
+        initialProfitData={selectedPlan.profitData}
+        initialBunningsData={selectedPlan.bunningsData}
       />
     );
   }

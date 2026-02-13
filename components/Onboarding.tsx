@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Wrench, Clock, Sparkles } from "lucide-react";
+import { ChevronRight, Wrench, Clock, Sparkles, Check, X } from "lucide-react";
 import { PandaScene } from "@/components/panda";
 
 export interface UserProfile {
@@ -122,7 +122,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   return (
     <div className="min-h-screen flex flex-col px-4 py-8 max-w-md mx-auto">
-      <StepDots current={step} total={4} />
+      <StepDots current={step} total={5} />
 
       <div className="flex-1 relative overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
@@ -393,6 +393,78 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           )}
 
           {step === 3 && (
+            <motion.div
+              key="comparison"
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+              className="flex flex-col h-full"
+            >
+              <motion.div
+                className="text-center mb-4"
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+              >
+                <h2 className="text-2xl font-black text-white mb-1">Why FixerUppera?</h2>
+                <p className="text-gray-400 text-sm">What makes us different</p>
+              </motion.div>
+
+              <div className="flex-1 overflow-y-auto space-y-2 pb-4">
+                {[
+                  { feature: "AI Mockups", us: "Real AI image edits", them: "Overlays & filters" },
+                  { feature: "DIY Plans", us: "Step-by-step instructions", them: "None" },
+                  { feature: "Shopping Lists", us: "Items with cost estimates", them: "None" },
+                  { feature: "Material Detection", us: "Identifies wood & finish", them: "None" },
+                  { feature: "Profit Calculator", us: "Built-in with every plan", them: "None" },
+                  { feature: "Free Trial", us: "7-day full access", them: "Hidden paywalls" },
+                  { feature: "3 Modes", us: "Standard, Pro, Creative", them: "Single mode" },
+                  { feature: "Before & After", us: "Interactive slider", them: "None" },
+                ].map((row, i) => (
+                  <motion.div
+                    key={row.feature}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 + i * 0.05 }}
+                    className="bg-gray-800/50 rounded-xl p-3 flex items-center gap-3"
+                  >
+                    <div className="flex-shrink-0 w-20">
+                      <span className="text-xs font-bold text-purple-400">{row.feature}</span>
+                    </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-green-400" />
+                      </div>
+                      <span className="text-xs text-white">{row.us}</span>
+                    </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="w-5 h-5 bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                        <X className="w-3 h-3 text-red-400" />
+                      </div>
+                      <span className="text-xs text-gray-500">{row.them}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <motion.button
+                onClick={nextStep}
+                className="btn w-full py-4 bg-purple-600 text-white rounded-2xl font-bold text-lg hover:bg-purple-700 active:scale-98 transition-all mt-4"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  Almost There!
+                  <ChevronRight className="w-5 h-5" />
+                </span>
+              </motion.button>
+            </motion.div>
+          )}
+
+          {step === 4 && (
             <motion.div
               key="ready"
               custom={direction}

@@ -27,6 +27,7 @@ export default function IdeasList({ analysis, constraints, onSelectIdea, onBack 
         body: JSON.stringify({
           analysis,
           constraints,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
 

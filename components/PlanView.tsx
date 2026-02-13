@@ -19,6 +19,10 @@ import {
 import MockupGallery from "./MockupGallery";
 import { imageToBase64 } from "@/lib/imageUtils";
 import PandaLoading from "@/components/panda/PandaLoading";
+import ProfitCalculator, { ProfitData } from "./ProfitCalculator";
+import BunningsShoppingList from "./BunningsShoppingList";
+import StoreSelector from "./StoreSelector";
+import type { BunningsData, BunningsStoreInfo } from "@/lib/bunnings";
 
 interface PlanViewProps {
   idea: any;
@@ -30,9 +34,11 @@ interface PlanViewProps {
   initialPlan?: any;
   initialCompletedSteps?: number[];
   initialMockupImage?: string;
+  initialProfitData?: ProfitData;
+  initialBunningsData?: BunningsData;
 }
 
-export default function PlanView({ idea, analysis, constraints, beforeImage, targetImage, onBack, initialPlan, initialCompletedSteps, initialMockupImage }: PlanViewProps) {
+export default function PlanView({ idea, analysis, constraints, beforeImage, targetImage, onBack, initialPlan, initialCompletedSteps, initialMockupImage, initialProfitData, initialBunningsData }: PlanViewProps) {
   const [plan, setPlan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(
@@ -44,6 +50,16 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
   );
   const [shoppingListOpen, setShoppingListOpen] = useState(false);
   const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [profitData, setProfitData] = useState<ProfitData | undefined>(initialProfitData);
+  const [bunningsData, setBunningsData] = useState<BunningsData | null>(initialBunningsData || null);
+  const [bunningsLoading, setBunningsLoading] = useState(false);
+  const [showStoreSelector, setShowStoreSelector] = useState(false);
+
+  // TODO: Enable when Bunnings API access is granted
+  const BUNNINGS_ENABLED = false;
+  const isAustralian = BUNNINGS_ENABLED && typeof window !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone.startsWith("Australia/")
+    : false;
 
   useEffect(() => {
     if (initialPlan) {
@@ -80,6 +96,7 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
             woodType: "unknown",
             indoorOutdoor: "indoor",
           },
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
 
@@ -100,6 +117,65 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
       newCompleted.add(stepNumber);
     }
     setCompletedSteps(newCompleted);
+  };
+
+  const fetchBunningsData = async (store: BunningsStoreInfo) => {
+    setBunningsLoading(true);
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const response = await fetch("/api/bunnings/match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materials: plan.materials,
+          locationCode: store.locationCode,
+          storeName: store.name,
+          storeAddress: store.address,
+          timezone,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to match materials");
+      }
+
+      const data = await response.json();
+      setBunningsData(data);
+    } catch (error: any) {
+      console.error("Bunnings match error:", error);
+      alert(error.message || "Could not load Bunnings products. Please try again.");
+    } finally {
+      setBunningsLoading(false);
+    }
+  };
+
+  const handleFindAtBunnings = () => {
+    try {
+      const savedStore = localStorage.getItem("fixeruppera_bunnings_store");
+      if (savedStore) {
+        const store = JSON.parse(savedStore) as BunningsStoreInfo;
+        fetchBunningsData(store);
+        return;
+      }
+    } catch {
+      // Invalid stored data — show selector
+    }
+    setShowStoreSelector(true);
+  };
+
+  const handleStoreSelected = (store: BunningsStoreInfo) => {
+    setShowStoreSelector(false);
+    fetchBunningsData(store);
+  };
+
+  const handleChangeStore = () => {
+    setShowStoreSelector(true);
+  };
+
+  const handleRefreshBunnings = () => {
+    if (!bunningsData) return;
+    fetchBunningsData(bunningsData.store);
   };
 
   const generateShareContent = () => {
@@ -213,7 +289,7 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
       const savedPlan = {
         id: `plan-${Date.now()}`,
         savedAt: new Date().toISOString(),
-        version: 2,
+        version: 3,
         plan,
         idea,
         analysis,
@@ -222,6 +298,8 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
         completedSteps: Array.from(completedSteps),
         mockupImage: selectedMockupImage || undefined,
         appMode: analysis?.plan ? "pro" : "standard",
+        profitData: profitData || undefined,
+        bunningsData: bunningsData || undefined,
       };
       console.log('✨ New saved plan object:', savedPlan);
 
@@ -638,20 +716,61 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
         </button>
         {shoppingListOpen && (
           <div className="px-6 pb-6 space-y-2">
-            {plan.materials?.map((material: any, index: number) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
-              >
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">{material.item}</div>
-                  <div className="text-sm text-gray-600">Quantity: {material.qty}</div>
-                </div>
-              </div>
-            ))}
+            {bunningsData ? (
+              <BunningsShoppingList
+                products={bunningsData.products}
+                store={bunningsData.store}
+                totalEstimate={bunningsData.totalEstimate}
+                matchedAt={bunningsData.matchedAt}
+                onChangeStore={handleChangeStore}
+                onRefresh={handleRefreshBunnings}
+              />
+            ) : (
+              <>
+                {plan.materials?.map((material: any, index: number) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 p-3 rounded-lg bg-gray-50"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{material.item}</div>
+                      <div className="text-sm text-gray-600">Quantity: {material.qty}</div>
+                    </div>
+                  </div>
+                ))}
+
+                {isAustralian && !bunningsLoading && (
+                  <button
+                    onClick={handleFindAtBunnings}
+                    className="btn w-full mt-3 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Find at Bunnings
+                  </button>
+                )}
+
+                {bunningsLoading && (
+                  <div className="flex items-center justify-center gap-2 py-4 text-green-700">
+                    <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm font-medium">Checking Bunnings prices...</span>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
+      {!bunningsData && (
+        <p className="text-xs text-gray-400 -mt-4 px-2">Suggested materials — check your local store for availability and pricing.</p>
+      )}
+
+      {/* Store Selector Modal */}
+      {showStoreSelector && (
+        <StoreSelector
+          onSelect={handleStoreSelected}
+          onClose={() => setShowStoreSelector(false)}
+        />
+      )}
 
       {/* Steps (Collapsible) */}
       <div className="bg-white rounded-xl border border-gray-200">
@@ -740,6 +859,15 @@ export default function PlanView({ idea, analysis, constraints, beforeImage, tar
           <p className="text-sm text-green-800">{plan.resale.note}</p>
         </div>
       )}
+
+      {/* Profit Calculator */}
+      <ProfitCalculator
+        costEstimate={plan.costEstimate}
+        timeEstimate={plan.timeEstimate}
+        resale={plan.resale}
+        initialData={initialProfitData}
+        onDataChange={setProfitData}
+      />
 
       {/* Selected Mockup Preview */}
       {selectedMockupImage && (

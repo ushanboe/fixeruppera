@@ -17,18 +17,25 @@ Mobile-first PWA that helps users transform old furniture through AI-powered ana
 - **Phase 1 COMPLETE**: Standard mode (photo → identify → constraints → analysis → ideas → plan)
 - **Phase 2 COMPLETE**: Pro mode (before + target photo matching), Creative Reuse mode
 - **Qwen Integration COMPLETE**: AI-generated mockup previews with before/after slider
-- **Onboarding COMPLETE**: 4-step animated onboarding with Framer Motion, persistent user profile, simplified per-project constraints
+- **Onboarding COMPLETE**: 5-step animated onboarding with Framer Motion, persistent user profile, "Us vs Them" comparison table, simplified per-project constraints
 - **Save/Share + Mockup Persistence COMPLETE**: Pick favourite mockup, save with plan, instant reload, before photo display, compressed image storage (v2 save format)
 - **Design Directions COMPLETE**: Collapsible category menus (Classic, Retro 60's, Kids, 2025-2026 Trends), custom user input, rich AI prompts per subcategory
 - **3D Panda Mascot COMPLETE**: Animated Mixamo panda replaces CSS builders (onboarding) and Loader2 spinners (all loading states)
 - **UX Polish COMPLETE**: Collapsible plan sections (Shopping List, Instructions), scroll position management, mockup variation prompts, purple glow behind panda
 - **Pro Mode Bug Fixes COMPLETE**: Error handling for match-target API, maxDuration timeout, correct back navigation
+- **Region Detection COMPLETE**: Auto-detect user region via timezone → currency, budget scaling, no store-specific branding in AI prompts
+- **Profit Calculator COMPLETE**: Collapsible calculator on PlanView — pre-fills from plan data, calculates ROI/profit margin, persists with saved plans
+- **Bunnings API Integration COMPLETE**: Material → product matching, nearest store lookup, stock/aisle/price enrichment (AU-only, currently disabled with `BUNNINGS_ENABLED = false`)
+- **Plan Feedback Endpoint COMPLETE**: `POST /api/feedback` — logs plan thumbs up/down ratings to Vercel function logs
+- **Founding Member Counter COMPLETE**: `GET/POST /api/founding` — in-memory counter (750 limit) for founding member program
 
 ## Environment Variables (.env.local)
 ```
 OPENAI_API_KEY=sk-proj-...          # GPT-4o-mini for analysis/ideas/plans
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 DASHSCOPE_API_KEY=sk-...            # Qwen-Image-Edit (Alibaba Cloud Model Studio, Singapore region)
+BUNNINGS_CLIENT_ID=...              # Bunnings API OAuth2 (sandbox, AU-only)
+BUNNINGS_CLIENT_SECRET=...          # Bunnings API OAuth2 (sandbox, AU-only)
 ```
 
 ## 3 Modes
@@ -36,7 +43,9 @@ DASHSCOPE_API_KEY=sk-...            # Qwen-Image-Edit (Alibaba Cloud Model Studi
 2. **Pro Mode**: Upload before + target photos → AI matches style → generates plan to achieve target look
 3. **Creative Reuse**: Upload found object → AI suggests practical restoration/repurposing ideas
 
-## API Routes (`app/api/upcycle/`)
+## API Routes (`app/api/`)
+
+### AI Routes (`app/api/upcycle/`)
 | Route | Purpose | AI Provider |
 |-------|---------|-------------|
 | `identify/` | Identify furniture from photo | GPT-4o-mini |
@@ -48,10 +57,22 @@ DASHSCOPE_API_KEY=sk-...            # Qwen-Image-Edit (Alibaba Cloud Model Studi
 | `mockups/` | Generate AI visual previews | Qwen-Image-Edit-Max |
 | `proxy-image/` | Server-side image proxy (CORS fallback for Qwen CDN) | — |
 
+### Bunnings Routes (`app/api/bunnings/`)
+| Route | Purpose |
+|-------|---------|
+| `stores/` | Nearest Bunnings store lookup via geolocation (AU-only) |
+| `match/` | Material → Bunnings product matching with prices, stock, aisle/bay (`maxDuration = 30`) |
+
+### Backend Routes (`app/api/`)
+| Route | Purpose |
+|-------|---------|
+| `feedback/` | Plan rating logging — `POST { type, rating, planTitle, appMode, timestamp }` → Vercel function logs |
+| `founding/` | Founding member counter — `GET` returns count/limit/remaining, `POST` increments (in-memory, 750 limit) |
+
 ## Components (`components/`)
 | Component | Purpose |
 |-----------|---------|
-| `Onboarding.tsx` | 4-step animated onboarding (Framer Motion), exports `UserProfile` interface |
+| `Onboarding.tsx` | 5-step animated onboarding (Framer Motion) with "Us vs Them" comparison table, exports `UserProfile` interface |
 | `PhotoCapture.tsx` | Camera capture + gallery upload (Standard/Creative) |
 | `DualPhotoCapture.tsx` | Before + Target photo capture (Pro mode) |
 | `IdentificationResults.tsx` | Display AI identification results |
@@ -60,9 +81,12 @@ DASHSCOPE_API_KEY=sk-...            # Qwen-Image-Edit (Alibaba Cloud Model Studi
 | `AnalysisResults.tsx` | Detailed analysis display |
 | `ComparisonResults.tsx` | Before vs target comparison (Pro mode) |
 | `IdeasList.tsx` | Ranked makeover ideas |
-| `PlanView.tsx` | Step-by-step plan + before photo + collapsible Shopping List & Instructions + mockup preview + Save/Share/Export |
+| `PlanView.tsx` | Step-by-step plan + before photo + collapsible Shopping List & Instructions + Profit Calculator + mockup preview + Save/Share/Export |
+| `ProfitCalculator.tsx` | Collapsible flip profit calculator — pre-fills from plan data, calculates ROI with color-coded verdict |
 | `MockupGallery.tsx` | AI mockup previews + "I Love This! Save It!" button + before/after slider |
 | `SavedPlans.tsx` | Saved plans list with before + mockup thumbnails, instant load |
+| `StoreSelector.tsx` | Geolocation → nearest Bunnings store picker modal (AU-only) |
+| `BunningsShoppingList.tsx` | Enriched product cards with price, stock, aisle/bay location |
 | `BottomNav.tsx` | Bottom navigation (Home, Saved, Settings) |
 | `panda/index.ts` | Barrel export with `next/dynamic` SSR-safe wrapper for PandaScene |
 | `panda/PandaScene.tsx` | R3F Canvas wrapper (camera, lights, transparent bg) |
@@ -74,6 +98,8 @@ DASHSCOPE_API_KEY=sk-...            # Qwen-Image-Edit (Alibaba Cloud Model Studi
 | File | Purpose |
 |------|---------|
 | `imageUtils.ts` | `imageToBase64()` — canvas-based image compression with CORS proxy fallback |
+| `region.ts` | Region detection via timezone → currency, budget scaling, pricing context for AI prompts. Exports `getCountryCode(timezone)` |
+| `bunnings.ts` | Bunnings API client: OAuth2 token cache, `searchItem`, `getPrices`, `getNearestStores`, `getStock`, `getItemLocations`, `matchMaterials` |
 
 ## User Flow
 ```
@@ -102,12 +128,12 @@ Onboarding (first visit) → Mode Select → Photo Upload → Identify → Const
 - Also restores `initialCompletedSteps` and `initialMockupImage` from saved data
 - Console logs "=== RESTORED: Using saved plan data ==="
 
-### Save Data Structure (v2)
+### Save Data Structure (v3)
 ```typescript
 {
   id: string;              // "plan-{timestamp}"
   savedAt: string;         // ISO date
-  version: 2;              // Schema version (v1 plans lack this + mockupImage + appMode)
+  version: 3;              // Schema version (v1 lacks mockupImage/appMode, v2 lacks bunningsData)
   plan: any;               // Full plan data from API
   idea: any;               // Selected idea
   analysis: any;           // AI analysis results
@@ -116,6 +142,8 @@ Onboarding (first visit) → Mode Select → Photo Upload → Identify → Const
   completedSteps: number[];
   mockupImage?: string;    // Compressed base64 (~30-50KB) — only if user picked one
   appMode?: string;        // "standard" | "pro"
+  profitData?: ProfitData; // Profit calculator inputs (purchase price, selling price, hourly rate, etc.)
+  bunningsData?: any;      // Enriched Bunnings product matches (AU-only, if user looked up products)
 }
 ```
 Storage budget: 20 plans max × ~100KB (compressed before + mockup) = ~2MB, well within 5MB localStorage limit.
@@ -126,13 +154,14 @@ Storage budget: 20 plans max × ~100KB (compressed before + mockup) = ~2MB, well
 3. Progress bar (if steps completed)
 4. Summary cards (time, cost, difficulty)
 5. "See the Makeover" button
-6. Shopping List (collapsible, starts collapsed, shows item count)
+6. Shopping List (collapsible, starts collapsed, shows item count) + disclaimer text
 7. Step-by-Step Instructions (collapsible, starts collapsed, shows step count — checkable steps inside)
 8. Safety warnings
 9. Resale estimate
-10. Selected mockup preview (if picked)
-11. Save Plan button (full-width purple)
-12. Share + Export HTML buttons (side by side)
+10. Profit Calculator (collapsible, pre-fills from plan data)
+11. Selected mockup preview (if picked)
+12. Save Plan button (full-width purple)
+13. Share + Export HTML buttons (side by side)
 
 ### Image Compression
 - `lib/imageUtils.ts` exports `imageToBase64(src, maxSize, quality)`
@@ -142,11 +171,12 @@ Storage budget: 20 plans max × ~100KB (compressed before + mockup) = ~2MB, well
 
 ## Onboarding (`components/Onboarding.tsx`)
 
-### 4 Steps with Framer Motion Animations
+### 5 Steps with Framer Motion Animations
 1. **Welcome**: Animated title, 3D panda mascot (rallying, 250px), bounce entrance
 2. **About You**: 3D panda (walking, 120px), Name (required) + email (optional) inputs
-3. **Your Workshop**: 3D panda (spinning, 120px), Tools selector (None/Basic/Power), Time selector (Quick/Weekend/Grand), DIY Spirit Animal (fun 4-choice question)
-4. **Ready to Build**: 3D panda (rallying, 250px), personalized celebration, confetti particles, profile summary, "Start Transforming" button
+3. **Why FixerUppera?**: "Us vs Them" comparison table — 8 rows with green check/red X icons showing FixerUppera advantages (AI Mockup Previews, Step-by-Step Plans, Shopping Lists, Material Detection, Profit Calculator, Free to Start, Before & After, 3 Creative Modes). Staggered row animation.
+4. **Your Workshop**: 3D panda (spinning, 120px), Tools selector (None/Basic/Power), Time selector (Quick/Weekend/Grand), DIY Spirit Animal (fun 4-choice question)
+5. **Ready to Build**: 3D panda (rallying, 250px), personalized celebration, confetti particles, profile summary, "Start Transforming" button
 
 ### UserProfile (localStorage: `fixeruppera_user_profile`)
 ```typescript
@@ -257,8 +287,9 @@ PlanView passes the actual idea fields to MockupGallery:
 |----------|-----------|--------|
 | Onboarding Welcome (Step 0) | `rallying` | 250px |
 | Onboarding About You (Step 1) | `walking` | 120px |
-| Onboarding Workshop (Step 2) | `spinning` | 120px |
-| Onboarding Ready (Step 3) | `rallying` | 250px |
+| Onboarding Why FixerUppera (Step 2) | — (no panda, comparison table) | — |
+| Onboarding Workshop (Step 3) | `spinning` | 120px |
+| Onboarding Ready (Step 4) | `rallying` | 250px |
 | Identifying furniture | `walking` | 180px |
 | Analyzing item | `sadIdle` | 180px |
 | Generating ideas | `spinning` | 180px |
@@ -279,6 +310,97 @@ PlanView passes the actual idea fields to MockupGallery:
 - Camera: `[0, 0, 4]` with `fov: 45` (in PandaScene)
 - Rotation speed: `delta * 0.3` (in PandaMascot useFrame)
 - Purple glow: `rgba(192, 150, 255, 0.45)` radial gradient behind panda for contrast on dark bg (in PandaScene)
+
+## Region Detection (`lib/region.ts`)
+
+Auto-detects the user's region via `Intl.DateTimeFormat().resolvedOptions().timeZone` (no permissions required). Maps timezone → country → currency and pricing context.
+
+### Supported Regions
+| Region | Currency | Budget Multiplier | Example Timezone |
+|--------|----------|-------------------|------------------|
+| AU (default) | AUD | 1.0 | Australia/Sydney |
+| US | USD | 0.65 | America/New_York |
+| GB | GBP | 0.52 | Europe/London |
+| CA | CAD | 0.88 | America/Toronto |
+| NZ | NZD | 1.08 | Pacific/Auckland |
+| EU | EUR | 0.60 | Europe/Paris |
+| IN | INR | 54.0 | Asia/Kolkata |
+
+### How It Works
+1. Client sends `timezone` field in all API requests (plan, ideas, match-target)
+2. `getRegionConfig(timezone)` resolves to `RegionConfig` (currency, currencySymbol, pricingContext, budgetMultiplier)
+3. `scaleBudget()` converts AUD-based budget ranges to local currency equivalents
+4. `pricingContext` is injected into AI prompts: "Use generic product descriptions without brand or store names. Price estimates in [currency]."
+5. **No store-specific branding**: AI prompts never reference Bunnings, Home Depot, or any retailer
+6. Shopping list disclaimer: "Suggested materials — check your local store for availability and pricing."
+
+### Files That Send Timezone
+- `components/PlanView.tsx` → `/api/upcycle/plan`
+- `components/IdeasList.tsx` → `/api/upcycle/ideas`
+- `app/page.tsx` (handleProModeAnalysis) → `/api/upcycle/match-target`
+
+## Profit Calculator (`components/ProfitCalculator.tsx`)
+
+Collapsible section on PlanView that helps furniture flippers calculate project ROI.
+
+### Features
+- Pre-fills from plan data: material cost (avg of costEstimate), hours (avg of timeEstimate), selling price (avg of resale range)
+- 5 input fields: Purchase Price, Additional Materials, Estimated Hours, Hourly Rate, Selling Price
+- Live calculations: Total Investment, Labor Cost, Projected Profit, Profit Margin %
+- Color-coded verdict: green "Great flip!" (≥40%), yellow "Decent return" (≥15%), red "Consider skipping" (<15%)
+- Hourly rate persists in `localStorage("fixeruppera_hourly_rate")` across sessions
+
+### ProfitData Interface
+```typescript
+interface ProfitData {
+  purchasePrice: string;
+  additionalMaterials: string;
+  estimatedHours: string;
+  hourlyRate: string;
+  sellingPrice: string;
+}
+```
+
+### Save Integration
+- `ProfitCalculator` calls `onDataChange(profitData)` on every input change
+- `PlanView` stores `profitData` in state, includes it in the save payload
+- `SavedPlans` passes `initialProfitData` back to PlanView when loading a saved plan
+
+## Bunnings API Integration (`lib/bunnings.ts`)
+
+Integrates with Bunnings Australia's sandbox API to enrich shopping lists with real product data. Currently disabled (`BUNNINGS_ENABLED = false` in PlanView) — enable when ready for production.
+
+### How It Works
+1. User generates a plan with shopping list
+2. AU users (detected via timezone) see "Find at Bunnings" button
+3. `StoreSelector` modal uses geolocation to find nearest store
+4. `POST /api/bunnings/match` sends material list → searches Bunnings API → returns enriched products
+5. `BunningsShoppingList` displays product cards with price, stock, aisle/bay
+
+### API Architecture
+- **OAuth2 Client Credentials**: Token cached module-level, refreshed 60s before expiry
+- **Sandbox URLs**: `connect.sandbox.api.bunnings.com.au`, `item.sandbox.api.bunnings.com.au`, etc.
+- **Search query cleanup**: Strips quantity units (ml/L/mm) and dashes before searching
+- **AU-only gate**: `isAustralian = timezone.startsWith("Australia/")` controls visibility
+- **Store persistence**: `localStorage("fixeruppera_bunnings_store")` stores selected store
+
+### Key Gotchas
+- `BUNNINGS_CLIENT_ID` and `BUNNINGS_CLIENT_SECRET` required in `.env.local`
+- Match endpoint needs `maxDuration = 30` — searches + prices + stock + aisles for all materials
+- `RegionConfig.country` field + `getCountryCode(timezone)` helper added for Bunnings AU detection
+- No store branding in AI prompts — Bunnings only appears in the enrichment layer
+
+## Backend Endpoints
+
+### Plan Feedback (`app/api/feedback/route.ts`)
+- `POST /api/feedback` — Logs plan ratings to Vercel function logs
+- Request: `{ type: "plan_rating", rating: "up" | "down", planTitle?, appMode?, timestamp }`
+- MVP logging: `console.log("[FEEDBACK] ...")` visible in Vercel dashboard → Functions → Logs
+
+### Founding Member Counter (`app/api/founding/route.ts`)
+- `GET /api/founding` → `{ count, limit: 750, remaining, isActive }`
+- `POST /api/founding` → Increments counter, returns 410 when full
+- **In-memory counter** — resets on deploy. Upgrade to Vercel KV (`@vercel/kv`) for production persistence
 
 ## Key Gotchas
 - **DashScope API key**: MUST start with `sk-` from Model Studio console (`modelstudio.console.alibabacloud.com`). Old 32-char hex keys fail with InvalidApiKey.
@@ -314,6 +436,18 @@ PlanView passes the actual idea fields to MockupGallery:
 - **Pro mode analysis error handling (fixed)**: `handleProModeAnalysis` had no try/catch — if `/api/upcycle/match-target` failed or timed out, the app got permanently stuck on the analysis loading screen. Now catches errors and returns user to constraints page to retry.
 - **match-target maxDuration (fixed)**: Route sends TWO full base64 images to OpenAI → can take 15-30+ seconds. Without `export const maxDuration = 60`, Vercel's default 10s timeout killed the request silently.
 - **Pro mode constraints back button (fixed)**: Back button navigated to `"upload"` instead of `"pro-identification"`. User lost their identification results.
+- **Region `region` scoping in catch blocks**: `region` is declared inside `try` — fallback objects in `catch` must use hardcoded `"USD"`, not `region.currency`.
+- **Shopping list disclaimer**: Small gray text below the shopping list: "Suggested materials — check your local store for availability and pricing."
+- **Profit Calculator pre-fill**: Uses `initialData` prop to restore saved values. Falls back to plan data averages if no saved data.
+- **Hourly rate persistence**: Stored in `localStorage("fixeruppera_hourly_rate")`, not in save payload — shared across all plans.
+- **Onboarding step count**: 5 steps total (0-4). StepDots total must match. Step 3 is comparison table, step 4 is celebration.
+- **Bunnings AU-only**: `isAustralian = timezone.startsWith("Australia/")` gates the "Find at Bunnings" button. Non-AU users never see it.
+- **Bunnings currently disabled**: `BUNNINGS_ENABLED = false` in PlanView. Set to `true` when sandbox API credentials are production-ready.
+- **Bunnings OAuth2 token cache**: Module-level variable — refreshed 60s before expiry. No cold-start latency after first request.
+- **Bunnings search query cleanup**: Strip quantity units (ml/L/mm) and dashes from material names before searching API.
+- **Save data backward compat**: v3 plans have `bunningsData` field. v2 plans (no `bunningsData`) and v1 plans (no `mockupImage`/`appMode`) still load fine.
+- **Founding counter resets on deploy**: In-memory MVP. Use Vercel KV for production persistence.
+- **Feedback endpoint is fire-and-forget**: No database — logs to `console.log` visible in Vercel function logs only.
 
 ## Build
 ```bash
