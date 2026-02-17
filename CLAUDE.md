@@ -390,6 +390,13 @@ Integrates with Bunnings Australia's sandbox API to enrich shopping lists with r
 - `RegionConfig.country` field + `getCountryCode(timezone)` helper added for Bunnings AU detection
 - No store branding in AI prompts — Bunnings only appears in the enrichment layer
 
+## Marketing Website
+
+Separate repo: `/home/patrick/fixeruppera-web` (Next.js 16, Vercel).
+- **Custom domain**: `https://fixeruppera.com` (GoDaddy DNS → Vercel)
+- Routes: `/` (landing), `/guide` (user manual), `/privacy`, `/terms`
+- Legal links from Capacitor app open `https://fixeruppera.com/privacy` and `https://fixeruppera.com/terms`
+
 ## Backend Endpoints
 
 ### Plan Feedback (`app/api/feedback/route.ts`)
